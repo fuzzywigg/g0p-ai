@@ -199,23 +199,23 @@ fetched: 2026-09-17
   "use strict";
 
   var FIRST_GLYPH = [
-    "                 0 0 0 6",
+    "                    0006",
     "",
-    "              .#%%%%%%#.",
-    "           .#%%%%%%%%%%%%#.",
-    "         .#%%%%        %%%%#.",
-    "        #%##    .####.    ##%#",
-    "       #%#    .##%%%%##.    #%#",
-    "      #%#    ##%      %##    #%#",
-    "      #%#   ##%   8  2   %##   #%#",
-    "      #%#    ##%      %##    #%#",
-    "       #%#    '##%%%%##'    #%#",
-    "        #%##    '####'    ##%#",
-    "         '#%%%%        %%%%#'",
-    "           '#%%%%%%%%%%%%#'",
-    "              '#%%%%%%#'",
-    "                   ||",
-    "                 ==++=="
+    "              #  #  #  #  #",
+    "           #                 #",
+    "        #      ###########      #",
+    "      #      ###############      #",
+    "     #     ####           ####     #",
+    "    #     ###               ###     #",
+    "    #     ##       82        ##     #",
+    "    #     ###               ###     #",
+    "     #     ####           ####     #",
+    "      #      ###############      #",
+    "        #      ###########      #",
+    "           #                 #",
+    "              #  #  #  #  #",
+    "                    ||",
+    "                  ==++=="
   ].join("\n");
 
   function parseEpisode(raw) {
@@ -259,13 +259,11 @@ fetched: 2026-09-17
     return Math.min(12000, Math.max(2800, ms));
   }
 
-  function densityFor(ch) {
+  function stampSize(ch) {
     if (ch === " " || ch === "") return 0;
     if (ch === "." || ch === "'" || ch === ",") return 1;
-    if (ch === "-" || ch === "_" || ch === "|") return 2;
-    if (ch === "=" || ch === "+" || ch === "/") return 2;
-    if (ch === "*" || ch === "o" || ch === "0" || ch === "6" || ch === "8" || ch === "2") return 3;
     if (ch === "#" || ch === "%") return 4;
+    if (ch === "0" || ch === "6" || ch === "8" || ch === "2") return 3;
     return 2;
   }
 
@@ -275,30 +273,34 @@ fetched: 2026-09-17
     var i;
     for (i = 0; i < lines.length; i++) maxW = Math.max(maxW, lines[i].length);
     var points = [];
-    var r, c, ch, d, k, jx, jy;
+    var r, c, ch, n, x, y;
     for (r = 0; r < lines.length; r++) {
       for (c = 0; c < lines[r].length; c++) {
         ch = lines[r][c];
-        d = densityFor(ch);
-        for (k = 0; k < d; k++) {
-          jx = (Math.random() - 0.5) * 0.55;
-          jy = (Math.random() - 0.5) * 0.55;
-          points.push({ col: c + 0.5 + jx, row: r + 0.5 + jy });
+        n = stampSize(ch);
+        for (y = 0; y < n; y++) {
+          for (x = 0; x < n; x++) {
+            points.push({
+              col: c + (x + 0.35 + Math.random() * 0.3) / n,
+              row: r + (y + 0.35 + Math.random() * 0.3) / n
+            });
+          }
         }
       }
     }
-    var padX = width * 0.12;
-    var padTop = height * 0.08;
-    var padBot = height * 0.30;
+    var padX = width * 0.16;
+    var padTop = height * 0.07;
+    var padBot = height * 0.28;
     var innerW = Math.max(40, width - padX * 2);
     var innerH = Math.max(40, height - padTop - padBot);
-    var cell = Math.min(innerW / Math.max(maxW, 1), innerH / Math.max(lines.length, 1));
-    var glyphW = maxW * cell;
-    var glyphH = lines.length * cell;
-    var ox = (width - glyphW) / 2;
-    var oy = padTop + (innerH - glyphH) / 2;
+    var size = Math.min(innerW, innerH) * 0.92;
+    var ox = (width - size) / 2;
+    var oy = padTop + Math.max(0, (innerH - size) / 2);
     return points.map(function (p) {
-      return { x: ox + p.col * cell, y: oy + p.row * cell };
+      return {
+        x: ox + (p.col / Math.max(maxW, 1)) * size,
+        y: oy + (p.row / Math.max(lines.length, 1)) * size
+      };
     });
   }
 
@@ -345,7 +347,7 @@ fetched: 2026-09-17
   }
 
   function spawnParticles() {
-    var count = Math.round(Math.min(2800, Math.max(900, (w * h) / 900)));
+      var count = Math.round(Math.min(4200, Math.max(1400, (w * h) / 620)));
     particles = [];
     var i, p;
     for (i = 0; i < count; i++) {
@@ -369,6 +371,21 @@ fetched: 2026-09-17
   function assignTargets() {
     var targets = glyphTargets(FIRST_GLYPH, w, h);
     var i, p;
+    while (particles.length < targets.length + 80) {
+      particles.push({
+        x: Math.random() * w,
+        y: Math.random() * h,
+        vx: 0,
+        vy: 0,
+        r: 1.15,
+        a: 1,
+        sx: 0,
+        sy: 0,
+        tx: 0,
+        ty: 0,
+        hold: false
+      });
+    }
     shuffle(particles);
     for (i = 0; i < particles.length; i++) {
       p = particles[i];
@@ -376,12 +393,13 @@ fetched: 2026-09-17
         p.tx = targets[i].x;
         p.ty = targets[i].y;
         p.hold = true;
-        p.a = 0.72 + Math.random() * 0.28;
+        p.r = 1.2;
+        p.a = 0.82 + Math.random() * 0.18;
       } else {
-        p.tx = p.x + (Math.random() - 0.5) * w * 0.15;
-        p.ty = p.y + (Math.random() - 0.5) * h * 0.15;
+        p.tx = p.x;
+        p.ty = p.y;
         p.hold = false;
-        p.a = 0.04 + Math.random() * 0.08;
+        p.a = 0.012 + Math.random() * 0.02;
       }
       p.sx = p.x;
       p.sy = p.y;
