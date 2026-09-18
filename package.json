@@ -1,8 +1,10 @@
 {
   "name": "g0p-ai",
   "private": true,
+  "type": "module",
   "scripts": {
-    "dev": "npx serve .",
-    "build": "mkdir -p public && cp index.html public/index.html"
+    "dev": "npx --yes serve .",
+    "build": "mkdir -p public && cp index.html public/index.html",
+    "test": "node --test test/*.test.mjs"
   }
 }
