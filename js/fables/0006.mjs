@@ -33,6 +33,7 @@ export const FABLE_0006 = {
         pose: "snap",
         wall: "81 CAUGHT",
         footer: "IT WORKS",
+        burst: "BREAK THROUGH",
       },
     },
     craft: {

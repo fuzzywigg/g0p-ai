@@ -70,23 +70,36 @@ test("templates stamp a crab into every phase with dense glyphs", () => {
     t.frames.forEach((art, f) => {
       assert.ok(hashDensity(art) >= 40, `${t.id} frame ${f} too sparse`);
       assert.match(art, /O|o/, `${t.id} frame ${f} needs crab eyes`);
+      assert.match(art, /\\\/|\/\\/, `${t.id} frame ${f} needs crab pincers`);
     });
   });
-  const turn0 = composeTableau(PHASES[3], FABLE_0006.imagery.turn, 0);
-  const turn1 = composeTableau(PHASES[3], FABLE_0006.imagery.turn, 1);
+  const turn0 = composeTableau(PHASES[3], { mark: FABLE_0006.episode, ...FABLE_0006.imagery.turn }, 0);
+  const turn1 = composeTableau(PHASES[3], { mark: FABLE_0006.episode, ...FABLE_0006.imagery.turn }, 1);
   assert.match(turn0, /LOCAL GREEN/);
   assert.match(turn0, /O====O>/);
   assert.match(turn1, /81 CAUGHT/);
   assert.match(turn1, /BREAK THROUGH/);
-  const encore0 = composeTableau(PHASES[6], FABLE_0006.imagery.encore, 0);
-  const encore1 = composeTableau(PHASES[6], FABLE_0006.imagery.encore, 1);
+  const encore0 = composeTableau(PHASES[6], { mark: FABLE_0006.episode, ...FABLE_0006.imagery.encore }, 0);
+  const encore1 = composeTableau(PHASES[6], { mark: FABLE_0006.episode, ...FABLE_0006.imagery.encore }, 1);
   assert.match(encore0, /CURTAIN/);
   assert.match(encore1, /CURTAIN/);
-  assert.match(encore0, /##O##O/);
-  assert.match(encore1, /\\\/\\\//);
+  assert.match(encore0, /#O##/);
+  assert.match(encore1, /\\\/|\/##\\/);
   assert.match(encore1, /THE GATE TURNED/);
   assert.match(crabSprite("racer").join("\n"), /O====O>/);
-  assert.match(crabSprite("bow").join("\n"), /\\\/\\\//);
+  assert.match(crabSprite("bow").join("\n"), /\\\/|\/##\\/);
+  assert.notEqual(crabSprite("proud").join("\n"), crabSprite("inspect").join("\n"));
+  assert.match(crabSprite("proud").join("\n"), /##\\\/##/);
+  assert.match(crabSprite("inspect").join("\n"), /##>/);
+});
+
+test("episode mark and burst copy come from fable imagery, not template literals", () => {
+  const src = readFileSync(join(root, "js", "tableaux.mjs"), "utf8");
+  assert.doesNotMatch(src, /stamp\(grid, \["0006"\]/);
+  assert.doesNotMatch(src, /"BREAK THROUGH"/);
+  const hook = composeTableau(PHASES[0], { mark: FABLE_0006.episode, ...FABLE_0006.imagery.hook }, 0);
+  assert.match(hook, /0006/);
+  assert.match(hook, /HERE != CI/);
 });
 
 test("player inlines the phase map, composer, and frame-aware morph", () => {
@@ -104,6 +117,10 @@ test("player inlines the phase map, composer, and frame-aware morph", () => {
   assert.match(html, /breakthrough/);
   assert.match(html, /curtain/);
   assert.match(html, /speakCaption\(lines\[i\]\)/);
+  assert.match(html, /episode: "0006"/);
+  assert.match(html, /burst: "BREAK THROUGH"/);
+  assert.doesNotMatch(html, /shuffle\(particles\)/);
+  assert.match(html, /targets\.sort/);
   PHASE_IDS.forEach((id) => {
     assert.match(html, new RegExp(`id: "${id}"`));
     assert.match(html, new RegExp(`phase: ${id}`));
