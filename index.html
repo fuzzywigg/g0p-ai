@@ -757,6 +757,179 @@ phase: encore
     });
   }
 
+  // keep in sync with js/dream-flash.mjs
+  var FLASH_MS_MIN = 8;
+  var FLASH_MS_MAX = 36;
+  var PHASE_DREAM = {
+    hook: { hue: 48, glyphs: "*+", density: 0.55, speak: true, morphPeak: true, breakthrough: false },
+    room: { hue: 150, glyphs: "82", density: 0.32, speak: true, morphPeak: false, breakthrough: false },
+    itch: { hue: 18, glyphs: "81?", density: 0.62, speak: true, morphPeak: true, breakthrough: false },
+    turn: { hue: 300, glyphs: ">>*", density: 0.92, speak: true, morphPeak: true, breakthrough: true },
+    craft: { hue: 205, glyphs: "/#", density: 0.38, speak: true, morphPeak: false, breakthrough: false },
+    moral: { hue: 270, glyphs: "*~", density: 0.28, speak: true, morphPeak: false, breakthrough: false },
+    encore: { hue: 52, glyphs: "*O", density: 0.7, speak: true, morphPeak: true, breakthrough: false }
+  };
+  var GLYPH_STAMPS = {
+    "*": [" # # ", "  #  ", "#####", "  #  ", " # # "],
+    "+": ["  #  ", "  #  ", "#####", "  #  ", "  #  "],
+    ">": ["#  ", " ##", "  #", " ##", "#  "],
+    "?": [" ## ", "#  #", "  # ", "    ", "  # "],
+    "8": [" ## ", "#  #", " ## ", "#  #", " ## "],
+    "2": ["### ", "   #", " ## ", "#   ", "####"],
+    "1": [" # ", "## ", " # ", " # ", "###"],
+    "/": ["   #", "  # ", " #  ", "#   "],
+    "#": ["####", "####", "####", "####"],
+    "O": [" ## ", "#  #", "#  #", "#  #", " ## "],
+    "~": ["    ", " # #", "# # "]
+  };
+
+  function clampFlashMs(ms) {
+    var n = Number(ms);
+    if (!isFinite(n)) return FLASH_MS_MIN;
+    return Math.min(FLASH_MS_MAX, Math.max(FLASH_MS_MIN, n));
+  }
+
+  function flashDurationMs(phaseId, reason) {
+    var dream = PHASE_DREAM[phaseId];
+    var density = dream && dream.density != null ? dream.density : 0.4;
+    if (reason === "breakthrough") return clampFlashMs(FLASH_MS_MAX);
+    if (reason === "morph-peak") return clampFlashMs(14 + density * 18);
+    return clampFlashMs(10 + density * 16);
+  }
+
+  function shouldScheduleFlash(opts) {
+    opts = opts || {};
+    if (opts.reduceMotion) return false;
+    var dream = PHASE_DREAM[opts.phaseId];
+    if (!dream) return false;
+    if (opts.reason === "speak-start") return Boolean(dream.speak);
+    if (opts.reason === "morph-peak") return Boolean(dream.morphPeak);
+    if (opts.reason === "breakthrough") {
+      return Boolean(dream.breakthrough) && Number(opts.frame) === 1;
+    }
+    return false;
+  }
+
+  function scheduleDreamFlash(opts) {
+    opts = opts || {};
+    var frame = opts.frame || 0;
+    var reduceMotionFlag = Boolean(opts.reduceMotion);
+    if (!shouldScheduleFlash({
+      reduceMotion: reduceMotionFlag,
+      reason: opts.reason,
+      phaseId: opts.phaseId,
+      frame: frame
+    })) return null;
+    var dream = PHASE_DREAM[opts.phaseId];
+    var durationMs = flashDurationMs(opts.phaseId, opts.reason);
+    var density = opts.reason === "breakthrough" ? Math.min(1, dream.density + 0.18) : dream.density;
+    return {
+      at: opts.now,
+      durationMs: durationMs,
+      phaseId: opts.phaseId,
+      frame: frame,
+      reason: opts.reason,
+      hue: dream.hue,
+      glyphs: dream.glyphs,
+      density: density
+    };
+  }
+
+  function isFlashActive(flash, now) {
+    if (!flash) return false;
+    var t = now - flash.at;
+    return t >= 0 && t < flash.durationMs;
+  }
+
+  function fnv1a(str) {
+    var h = 2166136261;
+    var s = String(str);
+    var i;
+    for (i = 0; i < s.length; i++) {
+      h ^= s.charCodeAt(i);
+      h = Math.imul(h, 16777619);
+    }
+    return h >>> 0;
+  }
+
+  function mulberry32(seed) {
+    var a = seed >>> 0;
+    return function rand() {
+      a |= 0;
+      a = (a + 0x6d2b79f5) | 0;
+      var t = Math.imul(a ^ (a >>> 15), 1 | a);
+      t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+      return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+    };
+  }
+
+  function dreamStampSize(ch) {
+    if (ch === " " || ch === "") return 0;
+    if (ch === "#" || ch === "%") return 3;
+    return 2;
+  }
+
+  function clusterCells(glyphs) {
+    var chars = String(glyphs || "*").split("").filter(Boolean);
+    var points = [];
+    var col = 0;
+    var g, ch, stamp, r, c, cell, n, y, x;
+    for (g = 0; g < chars.length; g++) {
+      ch = chars[g];
+      stamp = GLYPH_STAMPS[ch] || GLYPH_STAMPS["*"];
+      for (r = 0; r < stamp.length; r++) {
+        for (c = 0; c < stamp[r].length; c++) {
+          cell = stamp[r][c];
+          n = dreamStampSize(cell);
+          for (y = 0; y < n; y++) {
+            for (x = 0; x < n; x++) {
+              points.push({
+                col: col + c + (x + 0.4) / Math.max(n, 1),
+                row: r + (y + 0.4) / Math.max(n, 1)
+              });
+            }
+          }
+        }
+      }
+      col += ((stamp[0] && stamp[0].length) || 4) + 1;
+    }
+    return points;
+  }
+
+  function dreamBurstPoints(flash, width, height) {
+    if (!flash) return [];
+    var fieldW = Math.max(40, Number(width) || 0);
+    var fieldH = Math.max(40, Number(height) || 0);
+    var cells = clusterCells(flash.glyphs);
+    var rand = mulberry32(fnv1a(flash.phaseId + ":" + flash.reason + ":" + flash.frame));
+    var density = Math.max(0.2, Math.min(1, Number(flash.density) || 0.4));
+    var copies = 2 + Math.round(density * 5);
+    var cx = fieldW * (0.42 + (flash.reason === "breakthrough" ? 0.08 : 0));
+    var cy = fieldH * 0.38;
+    var span = Math.min(fieldW, fieldH) * (0.18 + density * 0.16);
+    var points = [];
+    var n, ox, oy, scale, c, cell;
+    for (n = 0; n < copies; n++) {
+      ox = (rand() - 0.5) * span * 1.4;
+      oy = (rand() - 0.5) * span * 0.9;
+      scale = (0.55 + rand() * 0.7) * (span / 18);
+      for (c = 0; c < cells.length; c++) {
+        if (rand() > 0.22 + density * 0.55) continue;
+        cell = cells[c];
+        points.push({
+          x: cx + ox + cell.col * scale,
+          y: cy + oy + cell.row * scale,
+          r: 0.9 + density * 1.4 + rand() * 0.6,
+          h: flash.hue + (rand() - 0.5) * 18,
+          s: 78 + rand() * 18,
+          l: 58 + rand() * 22,
+          a: 0.72 + rand() * 0.28
+        });
+      }
+    }
+    return points;
+  }
+
   function stampSize(ch) {
     if (ch === " " || ch === "") return 0;
     if (ch === "." || ch === "'" || ch === ",") return 1;
@@ -823,6 +996,9 @@ phase: encore
   var episode = parseEpisode(document.getElementById("episode-source").textContent);
   var w = 0;
   var h = 0;
+  var dreamFlash = null;
+  var dreamPoints = [];
+  var morphPeakArmed = false;
 
   function resize() {
     w = window.innerWidth;
@@ -935,6 +1111,10 @@ phase: encore
     var duration = reduceMotion ? 1 : morphMs;
     var t = Math.min(1, (now - morphStart) / duration);
     morphT = ease(t);
+    if (morphPeakArmed && morphT >= 0.52) {
+      morphPeakArmed = false;
+      triggerDreamFlash("morph-peak");
+    }
     var i, p;
     var cx = w / 2;
     var cy = h * 0.4;
@@ -988,6 +1168,10 @@ phase: encore
     document.documentElement.dataset.morphing = "1";
     morphStart = performance.now();
     if (reduceMotion) morphStart = performance.now() - 2;
+    morphPeakArmed = !reduceMotion;
+    if (!reduceMotion && (tableau.phase || tableau.id) === "turn" && tableau.frame === 1) {
+      triggerDreamFlash("breakthrough");
+    }
   }
 
   function syncScene(captionIdx) {
@@ -1000,17 +1184,68 @@ phase: encore
     return sceneIdx;
   }
 
-  function draw() {
-    ctx.fillStyle = "#000";
-    ctx.fillRect(0, 0, w, h);
+  function triggerDreamFlash(reason) {
+    if (reduceMotion) {
+      dreamFlash = null;
+      dreamPoints = [];
+      document.documentElement.dataset.dream = "0";
+      return;
+    }
+    var phase = phaseAt(currentScene < 0 ? 0 : currentScene);
+    var flash = scheduleDreamFlash({
+      now: performance.now(),
+      phaseId: phase && phase.id,
+      frame: currentFrame < 0 ? 0 : currentFrame,
+      reason: reason,
+      reduceMotion: reduceMotion
+    });
+    if (!flash) return;
+    dreamFlash = flash;
+    dreamPoints = dreamBurstPoints(flash, w, h);
+    document.documentElement.dataset.dream = "1";
+  }
+
+  function expireDreamFlash(now) {
+    if (!dreamFlash) return false;
+    if (isFlashActive(dreamFlash, now)) return true;
+    dreamFlash = null;
+    dreamPoints = [];
+    document.documentElement.dataset.dream = "0";
+    return false;
+  }
+
+  function drawDreamBurst() {
     var i, p;
-    for (i = 0; i < particles.length; i++) {
-      p = particles[i];
-      ctx.fillStyle = "rgba(255,255,255," + p.a + ")";
+    for (i = 0; i < dreamPoints.length; i++) {
+      p = dreamPoints[i];
+      ctx.fillStyle = "hsla(" + p.h + "," + p.s + "%," + p.l + "%," + p.a + ")";
       ctx.beginPath();
       ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2);
       ctx.fill();
     }
+  }
+
+  function draw() {
+    ctx.fillStyle = "#000";
+    ctx.fillRect(0, 0, w, h);
+    var now = performance.now();
+    var flashing = expireDreamFlash(now);
+    var i, p;
+    for (i = 0; i < particles.length; i++) {
+      p = particles[i];
+      if (flashing && p.hold && i % 17 === 0) {
+        ctx.fillStyle = "hsla(" + dreamFlash.hue + ",72%,78%," + Math.min(1, p.a + 0.32) + ")";
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, p.r + 0.35, 0, Math.PI * 2);
+        ctx.fill();
+      } else {
+        ctx.fillStyle = "rgba(255,255,255," + p.a + ")";
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2);
+        ctx.fill();
+      }
+    }
+    if (flashing) drawDreamBurst();
   }
 
   var last = 0;
@@ -1044,6 +1279,7 @@ phase: encore
       captionsEl.textContent = lines[i];
       captionsEl.classList.remove("out");
       captionsEl.classList.add("in");
+      triggerDreamFlash("speak-start");
       await Promise.all([
         wait(captionDurationMs(lines[i])),
         speakCaption(lines[i])
