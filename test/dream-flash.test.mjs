@@ -229,6 +229,22 @@ test("speak-start locks to utterance start when speech can run, else caption rev
   assert.equal(
     shouldFireSpeakStartFlash({
       source: "utterance-start",
+      event: "utterance-error",
+      utteranceStarted: false,
+    }),
+    true,
+  );
+  assert.equal(
+    shouldFireSpeakStartFlash({
+      source: "utterance-start",
+      event: "utterance-error",
+      utteranceStarted: true,
+    }),
+    false,
+  );
+  assert.equal(
+    shouldFireSpeakStartFlash({
+      source: "utterance-start",
       event: "utterance-start",
     }),
     true,
@@ -290,10 +306,14 @@ test("morph-peak waits until the crab silhouette is mostly formed, then a short 
   assert.equal(isFlashActive(peak, 1000), false);
   assert.equal(isFlashActive(peak, peak.at), true);
   assert.equal(isFlashPending(peak, peak.at), false);
-  assert.ok(peak.durationMs < speak.durationMs);
   assert.ok(peak.density < speak.density);
-  assert.ok(peak.durationMs >= FLASH_MS_MIN);
+  assert.ok(peak.durationMs >= 16);
   assert.ok(peak.durationMs <= FLASH_MS_MAX);
+  let painted = false;
+  for (let t = 1000; t <= 1000 + MORPH_PEAK_DELAY_MS + peak.durationMs + 16; t += 16) {
+    if (isFlashActive(peak, t)) painted = true;
+  }
+  assert.equal(painted, true);
 });
 
 test("breakthrough stays immediate, max window, and denser than morph-peak", () => {
@@ -338,7 +358,7 @@ test("player inlines glyph-only dream flashes on speak, morph peak, and turn sma
   assert.match(html, /triggerDreamFlash\("morph-peak"\)/);
   assert.match(html, /triggerDreamFlash\("breakthrough"\)/);
   assert.match(html, /u\.onstart/);
-  assert.match(html, /utterance-start/);
+  assert.match(html, /utterance-error/);
   assert.match(html, /caption-reveal/);
   assert.match(html, /MORPH_PEAK_EASE/);
   assert.doesNotMatch(html, /morphT >= 0\.52/);

@@ -754,11 +754,13 @@ phase: encore
         };
         u.onerror = function () {
           if (currentUtterance === u) currentUtterance = null;
+          if (typeof opts.onError === "function") opts.onError();
           finish();
         };
         try {
           synth.speak(u);
         } catch (err) {
+          if (typeof opts.onError === "function") opts.onError();
           finish();
         }
         speechTimer = setTimeout(finish, speechFallbackMs(text));
@@ -806,7 +808,7 @@ phase: encore
     var dream = PHASE_DREAM[phaseId];
     var density = dream && dream.density != null ? dream.density : 0.4;
     if (reason === "breakthrough") return clampFlashMs(FLASH_MS_MAX);
-    if (reason === "morph-peak") return clampFlashMs(8 + density * 12);
+    if (reason === "morph-peak") return clampFlashMs(16 + density * 12);
     return clampFlashMs(10 + density * 16);
   }
 
@@ -831,7 +833,10 @@ phase: encore
   function shouldFireSpeakStartFlash(opts) {
     opts = opts || {};
     if (opts.reduceMotion) return false;
-    if (opts.source === SPEAK_START_UTTERANCE) return opts.event === SPEAK_START_UTTERANCE;
+    if (opts.source === SPEAK_START_UTTERANCE) {
+      if (opts.event === SPEAK_START_UTTERANCE) return true;
+      return opts.event === "utterance-error" && !opts.utteranceStarted;
+    }
     return opts.event === SPEAK_START_CAPTION;
   }
 
@@ -1337,24 +1342,27 @@ phase: encore
       captionsEl.classList.remove("out");
       captionsEl.classList.add("in");
       var source = speakStartSource({ canSpeak: speechIsAvailable() });
-      if (shouldFireSpeakStartFlash({
-        source: source,
-        event: "caption-reveal",
-        reduceMotion: reduceMotion
-      })) {
-        triggerDreamFlash("speak-start");
+      var utteranceStarted = false;
+      function flashSpeak(event) {
+        if (shouldFireSpeakStartFlash({
+          source: source,
+          event: event,
+          reduceMotion: reduceMotion,
+          utteranceStarted: utteranceStarted
+        })) {
+          triggerDreamFlash("speak-start");
+        }
       }
+      flashSpeak("caption-reveal");
       await Promise.all([
         wait(captionDurationMs(lines[i])),
         speakCaption(lines[i], {
           onStart: function () {
-            if (shouldFireSpeakStartFlash({
-              source: source,
-              event: "utterance-start",
-              reduceMotion: reduceMotion
-            })) {
-              triggerDreamFlash("speak-start");
-            }
+            utteranceStarted = true;
+            flashSpeak("utterance-start");
+          },
+          onError: function () {
+            flashSpeak("utterance-error");
           }
         })
       ]);

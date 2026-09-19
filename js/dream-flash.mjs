@@ -98,7 +98,7 @@ export function flashDurationMs(phaseId, reason) {
   const dream = PHASE_DREAM[phaseId];
   const density = dream?.density ?? 0.4;
   if (reason === "breakthrough") return clampFlashMs(FLASH_MS_MAX);
-  if (reason === "morph-peak") return clampFlashMs(8 + density * 12);
+  if (reason === "morph-peak") return clampFlashMs(16 + density * 12);
   return clampFlashMs(10 + density * 16);
 }
 
@@ -123,9 +123,13 @@ export function shouldFireSpeakStartFlash({
   source,
   event,
   reduceMotion = false,
+  utteranceStarted = false,
 } = {}) {
   if (reduceMotion) return false;
-  if (source === SPEAK_START_UTTERANCE) return event === SPEAK_START_UTTERANCE;
+  if (source === SPEAK_START_UTTERANCE) {
+    if (event === SPEAK_START_UTTERANCE) return true;
+    return event === "utterance-error" && !utteranceStarted;
+  }
   return event === SPEAK_START_CAPTION;
 }
 
