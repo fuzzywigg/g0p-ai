@@ -107,7 +107,7 @@
 </head>
 <body>
   <h1>The Ratchet That Never Turned</h1>
-  <canvas id="field" aria-label="Star field. Click to begin episode 0006."></canvas>
+  <canvas id="field" aria-label="Pointillism field. Click to begin episode 0006. Geryon the crab tells the fable."></canvas>
   <div id="hint">click</div>
   <div id="caption-wrap">
     <p id="captions" aria-live="polite"></p>
@@ -198,144 +198,146 @@ fetched: 2026-09-17
 (function () {
   "use strict";
 
+  var HERO = "crab";
   var TABLEAUX = [
     {
       id: "local-green",
+      pose: "proud",
       art: [
-        "                    0006",
+        "                         0006",
         "",
-        "        ###########################",
-        "     ###                           ###",
-        "   ##         ###############         ##",
-        "  ##         ##             ##         ##",
-        " ##         ##    LOCAL      ##         ##",
-        " ##         ##     GREEN     ##         ##",
-        " ##         ##      OK       ##         ##",
-        "  ##         ##             ##         ##",
-        "   ##         ###############         ##",
-        "     ###                           ###",
-        "        ###########################",
-        "              HERE  !=  CI"
+        "        ##                                 ##",
+        "      ######           \\/     \\/           ######",
+        "     ########          /\\     /\\          ########",
+        "        #######################################",
+        "      ######     #####           #####     ######",
+        "     ####        ## O ##       ## O ##        ####",
+        "     ####                                     ####",
+        "      ######          ###########          ######",
+        "        #######################################",
+        "      ##  ##  ##                     ##  ##  ##",
+        "     ####            LOCAL  GREEN            ####",
+        "      ##              HERE  !=  CI            ##"
       ].join("\n")
     },
     {
       id: "ratchet-82",
+      pose: "inspect",
       art: [
-        "                    0006",
+        "                         0006",
         "",
-        "              #  #  #  #  #",
-        "           #                 #",
-        "        #      ###########      #",
-        "      #      ###############      #",
-        "     #     ####           ####     #",
-        "    #     ###               ###     #",
-        "    #     ##       82        ##     #",
-        "    #     ###               ###     #",
-        "     #     ####           ####     #",
-        "      #      ###############      #",
-        "        #      ###########      #",
-        "           #                 #",
-        "              #  #  #  #  #",
-        "                    ||",
-        "                  ==++=="
+        "   ##                                           ##",
+        " ######                                       ######",
+        "########          \\/         \\/          ########",
+        "   ##             /\\         /\\             ##",
+        "      #######################################",
+        "    ######     #####           #####     ######",
+        "   ####        ## O ##   82   ## O ##        ####",
+        "   ####                                     ####",
+        "    ######          ###########          ######",
+        "      #######################################",
+        "    ##  ##  ##                     ##  ##  ##",
+        "             RATCHET HOLDS AT 82"
       ].join("\n")
     },
     {
       id: "runner-81",
+      pose: "uneasy",
       art: [
-        "                    0006",
+        "                         0006",
         "",
-        "      #############################",
-        "      ##                         ##",
-        "      ##     CLEAN    RUNNER     ##",
-        "      ##                         ##",
-        "      ##   ###################   ##",
-        "      ##   ##               ##   ##",
-        "      ##   ##      81       ##   ##",
-        "      ##   ##               ##   ##",
-        "      ##   ###################   ##",
-        "      ##                         ##",
-        "      #############################",
-        "              ||           ||"
+        "        ##                                 ##",
+        "      ######                             ######",
+        "     ########          \\/               ########",
+        "        #######################################",
+        "      ######     #####           #####     ######",
+        "     ####        ## o ##       ## o ##        ####",
+        "     ####                81                   ####",
+        "      ######          ###########          ######",
+        "        #######################################",
+        "      ##  ##  ##                     ##  ##  ##",
+        "     ####          CLEAN  RUNNER             ####",
+        "      ##              81  !=  82              ##"
       ].join("\n")
     },
     {
       id: "nvm-pin",
+      pose: "pray",
       art: [
-        "                    0006",
+        "                         0006",
         "",
-        "                     ##",
-        "                    ####",
-        "                   ######",
-        "                 ####|####",
-        "               ###   |   ###",
-        "             ##      |      ##",
-        "            ##     nvm       ##",
-        "            ##       |       ##",
-        "             ##      |      ##",
-        "               ###   |   ###",
-        "                 ####|####",
-        "                     |",
-        "                    ###",
-        "                   PRAYER"
+        "                      \\/\\/",
+        "                      /\\/\\",
+        "                     ######",
+        "        #######################################",
+        "      ######     #####           #####     ######",
+        "     ####        ## O ##       ## O ##        ####",
+        "     ####              nvm                ####",
+        "      ######          ###########          ######",
+        "        #######################################",
+        "      ##  ##  ##                     ##  ##  ##",
+        "     ####              PRAYER                ####",
+        "      ##            PINNED  HERE              ##"
       ].join("\n")
     },
     {
       id: "scar-promote",
+      pose: "scar",
       art: [
-        "                    0006",
+        "                         0006",
         "",
-        "      #     #################     #",
-        "       #    ##  PROMOTE    ##    #",
-        "        #   #################   #",
-        "         #        ###        #",
-        "          #       ###       #",
-        "           #      ###      #",
-        "          #       ###       #",
-        "         #        ###        #",
-        "        #   #################   #",
-        "       #    ##  RETRACT    ##    #",
-        "      #     #################     #",
-        "              81  !=  82"
+        "     \\/                                      ##",
+        "     /\\                                    ######",
+        "   ######           \\/                   ########",
+        "  ########          /\\                      ##",
+        "     #######################################",
+        "   ######     #####           #####     ######",
+        "  ####        ## O ##       ## O ##        ####",
+        "  ####            PROMOTE                 ####",
+        "   ######          ###########          ######",
+        "     #######################################",
+        "   ##  ##  ##                     ##  ##  ##",
+        "          RETRACT         81  !=  82"
       ].join("\n")
     },
     {
       id: "gate-catch",
+      pose: "snap",
       art: [
-        "                    0006",
+        "                         0006",
         "",
-        "      #  #  #  #  #  #  #  #  #",
-        "      #  #  #  #  #  #  #  #  #",
-        "      #  #  #  GATE  #  #  #  #",
-        "      #  #  #  #  #  #  #  #  #",
-        "      #  #  #  #  #  #  #  #  #",
-        "      #########################",
-        "      ##                     ##",
-        "      ##    81   CAUGHT      ##",
-        "      ##                     ##",
-        "      #########################",
-        "              IMMUNE"
+        "              ##                 ##",
+        "            ######             ######",
+        "           ########   >     <  ########",
+        "              #######################",
+        "            ######  ##### #####  ######",
+        "           ####     ## O # # O ##     ####",
+        "           ####         GATE         ####",
+        "            ######    #########    ######",
+        "              #######################",
+        "            ##  ##             ##  ##",
+        "           ####     81  CAUGHT      ####",
+        "                    IMMUNE"
       ].join("\n")
     },
     {
       id: "restored-82",
+      pose: "victory",
       art: [
-        "                    0006",
+        "                         0006",
         "",
-        "              #  #  #  #  #",
-        "           #                 #",
-        "        #      ###########      #",
-        "      #      ###############      #",
-        "     #     ####           ####     #",
-        "    #     ###               ###     #",
-        "    #     ##       82        ##     #",
-        "    #     ###               ###     #",
-        "     #     ####           ####     #",
-        "      #      ###############      #",
-        "        #      ###########      #",
-        "           #                 #",
-        "              #  #  #  #  #",
-        "                  TURNED"
+        "     \\/                                   \\/",
+        "     /\\                                   /\\",
+        "   ######                               ######",
+        "  ########                             ########",
+        "     #######################################",
+        "   ######     #####           #####     ######",
+        "  ####        ## O ##   82   ## O ##        ####",
+        "  ####                                     ####",
+        "   ######          ###########          ######",
+        "     #######################################",
+        "   ##  ##  ##                     ##  ##  ##",
+        "  ####            THE GATE TURNED            ####"
       ].join("\n")
     }
   ];
@@ -402,6 +404,104 @@ fetched: 2026-09-17
     var words = caption.trim().split(/\s+/).filter(Boolean).length;
     var ms = 2200 + words * 160;
     return Math.min(12000, Math.max(2800, ms));
+  }
+
+  // keep in sync with js/speech.mjs
+  function pickEnglishVoice(voices) {
+    if (!voices || !voices.length) return null;
+    var list = [];
+    var i;
+    for (i = 0; i < voices.length; i++) if (voices[i]) list.push(voices[i]);
+    var english = list.filter(function (v) {
+      return /^en([-_]|$)/i.test(String(v.lang || ""));
+    });
+    var pool = english.length ? english : list;
+    function score(v) {
+      var name = String(v.name || "");
+      var lang = String(v.lang || "");
+      var n = 0;
+      if (/google/i.test(name)) n += 8;
+      if (/microsoft|natural|neural/i.test(name)) n += 7;
+      if (/samantha|daniel|karen|moira|alex|arthur|rishi|sonia|guy/i.test(name)) n += 6;
+      if (/en-GB/i.test(lang)) n += 3;
+      if (/en-US/i.test(lang)) n += 2;
+      if (/en-AU|en-IN|en-IE/i.test(lang)) n += 1;
+      if (v.localService) n += 2;
+      if (/compact|novelty|whisper|zarvox|bad news|bells|boing|cellos|good news|jester|organ|superstar|trinoids|bubbles|bahh|pipes/i.test(name)) n -= 10;
+      return n;
+    }
+    return pool.slice().sort(function (a, b) { return score(b) - score(a); })[0] || null;
+  }
+
+  function speechFallbackMs(text) {
+    var words = String(text || "").trim().split(/\s+/).filter(Boolean).length;
+    return Math.min(90000, Math.max(4000, words * 520 + 2500));
+  }
+
+  var currentUtterance = null;
+  var speechTimer = 0;
+
+  function cancelSpeech() {
+    currentUtterance = null;
+    if (speechTimer) {
+      clearTimeout(speechTimer);
+      speechTimer = 0;
+    }
+    var synth = window.speechSynthesis;
+    if (!synth || typeof synth.cancel !== "function") return;
+    try { synth.cancel(); } catch (err) {}
+  }
+
+  function speakCaption(text) {
+    return new Promise(function (resolve) {
+      var synth = window.speechSynthesis;
+      if (!synth || typeof window.SpeechSynthesisUtterance !== "function") {
+        document.documentElement.dataset.speech = "off";
+        resolve(false);
+        return;
+      }
+      document.documentElement.dataset.speech = "on";
+      cancelSpeech();
+      var settled = false;
+      function finish() {
+        if (settled) return;
+        settled = true;
+        if (speechTimer) {
+          clearTimeout(speechTimer);
+          speechTimer = 0;
+        }
+        resolve(true);
+      }
+      // cancel() then speak() in the same turn is dropped in some Chromium builds
+      speechTimer = setTimeout(function () {
+        if (settled) return;
+        var u = new window.SpeechSynthesisUtterance(String(text || ""));
+        currentUtterance = u;
+        var voice = pickEnglishVoice(synth.getVoices());
+        u.rate = 1;
+        u.pitch = 1;
+        if (voice) {
+          u.voice = voice;
+          u.lang = voice.lang || "en-US";
+        } else {
+          u.lang = "en-US";
+        }
+        u.onend = function () {
+          if (currentUtterance === u) currentUtterance = null;
+          finish();
+        };
+        u.onerror = function () {
+          if (currentUtterance === u) currentUtterance = null;
+          finish();
+        };
+        try {
+          synth.speak(u);
+        } catch (err) {
+          finish();
+        }
+        speechTimer = setTimeout(finish, speechFallbackMs(text));
+      }, 50);
+    });
   }
 
   function stampSize(ch) {
@@ -588,14 +688,28 @@ fetched: 2026-09-17
     var cx = w / 2;
     var cy = h * 0.4;
     var breathe = reduceMotion ? 1 : 1 + Math.sin(now * 0.0011) * 0.014;
+    var scuttle = reduceMotion ? 0 : Math.sin(now * 0.0022) * 12;
+    var bob = reduceMotion ? 0 : Math.sin(now * 0.0033) * 4.5;
     for (i = 0; i < particles.length; i++) {
       p = particles[i];
       if (t < 1) {
         p.x = p.sx + (p.tx - p.sx) * morphT;
         p.y = p.sy + (p.ty - p.sy) * morphT;
       } else if (p.hold) {
-        p.x = cx + (p.tx - cx) * breathe + (reduceMotion ? 0 : Math.sin(now * 0.002 + i) * 0.48);
-        p.y = cy + (p.ty - cy) * breathe + (reduceMotion ? 0 : Math.cos(now * 0.0018 + i * 0.7) * 0.4);
+        var lx = (p.tx - cx) / Math.max(1, w);
+        var claw = 0;
+        var clawY = 0;
+        if (!reduceMotion) {
+          if (lx < -0.07) {
+            claw = Math.sin(now * 0.0072 + i * 0.02) * 6;
+            clawY = Math.cos(now * 0.008 + i * 0.03) * 3.2;
+          } else if (lx > 0.07) {
+            claw = Math.sin(now * 0.0072 + Math.PI + i * 0.02) * 6;
+            clawY = Math.cos(now * 0.008 + Math.PI + i * 0.03) * 3.2;
+          }
+        }
+        p.x = cx + (p.tx - cx) * breathe + scuttle + claw + (reduceMotion ? 0 : Math.sin(now * 0.002 + i) * 0.48);
+        p.y = cy + (p.ty - cy) * breathe + bob + clawY + (reduceMotion ? 0 : Math.cos(now * 0.0018 + i * 0.7) * 0.4);
       }
     }
     if (t >= 1) {
@@ -606,7 +720,9 @@ fetched: 2026-09-17
 
   function beginSceneMorph(sceneIndex) {
     var tableau = tableauForScene(sceneIndex);
+    document.documentElement.dataset.hero = HERO;
     document.documentElement.dataset.glyph = tableau.id;
+    document.documentElement.dataset.pose = tableau.pose || "";
     document.documentElement.dataset.scene = String(sceneIndex);
     assignTargets(tableau.art);
     morphing = true;
@@ -667,8 +783,12 @@ fetched: 2026-09-17
       captionsEl.textContent = lines[i];
       captionsEl.classList.remove("out");
       captionsEl.classList.add("in");
-      await wait(captionDurationMs(lines[i]));
+      await Promise.all([
+        wait(captionDurationMs(lines[i])),
+        speakCaption(lines[i])
+      ]);
     }
+    cancelSpeech();
     document.documentElement.dataset.state = "done";
   }
 
@@ -676,7 +796,11 @@ fetched: 2026-09-17
     if (playing) return;
     playing = true;
     document.documentElement.dataset.state = "playing";
+    document.documentElement.dataset.hero = HERO;
     hintEl.textContent = "";
+    if (window.speechSynthesis && typeof window.speechSynthesis.getVoices === "function") {
+      window.speechSynthesis.getVoices();
+    }
     playCaptions();
   }
 
@@ -693,7 +817,17 @@ fetched: 2026-09-17
 
   document.addEventListener("click", onActivate);
   document.addEventListener("keydown", onActivate);
+  window.addEventListener("pagehide", cancelSpeech);
   canvas.setAttribute("tabindex", "0");
+
+  if (window.speechSynthesis && typeof window.speechSynthesis.getVoices === "function") {
+    window.speechSynthesis.getVoices();
+    if (typeof window.speechSynthesis.addEventListener === "function") {
+      window.speechSynthesis.addEventListener("voiceschanged", function () {
+        pickEnglishVoice(window.speechSynthesis.getVoices());
+      });
+    }
+  }
 
   resize();
   spawnParticles();

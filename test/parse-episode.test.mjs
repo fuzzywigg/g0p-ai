@@ -132,3 +132,37 @@ test("player morphs through one distinct tableau per episode scene", () => {
   assert.ok(ids.includes("gate-catch"));
   assert.ok(ids.includes("restored-82"));
 });
+
+test("Geryon is a crab protagonist with pose variants, not CI-icon tableaux", () => {
+  const html = readFileSync(join(root, "index.html"), "utf8");
+  assert.match(html, /var HERO = "crab"/);
+  assert.match(html, /dataset\.hero = HERO/);
+  assert.match(html, /dataset\.pose/);
+  assert.match(html, /scuttle/);
+  const block = html.match(/var TABLEAUX = \[([\s\S]*?)\];/);
+  assert.ok(block, "index.html must define TABLEAUX");
+  const poses = [...block[0].matchAll(/pose:\s*"([^"]+)"/g)].map((m) => m[1]);
+  const ids = [...block[0].matchAll(/id:\s*"([^"]+)"/g)].map((m) => m[1]);
+  assert.equal(poses.length, ids.length);
+  assert.equal(new Set(poses).size, poses.length, "each scene needs a distinct crab pose");
+  assert.ok(poses.includes("proud"));
+  assert.ok(poses.includes("inspect"));
+  assert.ok(poses.includes("uneasy"));
+  assert.ok(poses.includes("pray"));
+  assert.ok(poses.includes("scar"));
+  assert.ok(poses.includes("snap"));
+  assert.ok(poses.includes("victory"));
+  const arts = [...block[0].matchAll(/art:\s*\[([\s\S]*?)\]\.join/g)].map((m) => m[1]);
+  arts.forEach((art, i) => {
+    assert.match(art, /O|o/, `${ids[i]} crab should have eyes`);
+    const claws = (art.match(/\\\\\/|\/\\\\|##/g) || []).length;
+    assert.ok(claws >= 4, `${ids[i]} crab should keep claws/body mass (${claws})`);
+  });
+  assert.match(arts[0], /LOCAL/);
+  assert.match(arts[1], /82/);
+  assert.match(arts[2], /81/);
+  assert.match(arts[3], /nvm/);
+  assert.match(arts[4], /PROMOTE/);
+  assert.match(arts[5], /GATE/);
+  assert.match(arts[6], /TURNED/);
+});
