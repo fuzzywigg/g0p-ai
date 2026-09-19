@@ -45,3 +45,18 @@ export function captionDurationMs(caption) {
   const ms = 2200 + words * 160;
   return Math.min(12000, Math.max(2800, ms));
 }
+
+/** Map a flat caption index to the --- scene that contains it. */
+export function sceneIndexForCaption(episode, captionIndex) {
+  const scenes = episode?.scenes ?? [];
+  if (!scenes.length) return 0;
+  let idx = Number(captionIndex);
+  if (!Number.isFinite(idx) || idx < 0) idx = 0;
+  let offset = 0;
+  for (let i = 0; i < scenes.length; i++) {
+    const n = scenes[i].captions.length;
+    if (idx < offset + n) return i;
+    offset += n;
+  }
+  return scenes.length - 1;
+}

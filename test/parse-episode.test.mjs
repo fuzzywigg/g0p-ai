@@ -3,7 +3,11 @@ import { readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import test from "node:test";
-import { captionDurationMs, parseEpisode } from "../js/parse-episode.mjs";
+import {
+  captionDurationMs,
+  parseEpisode,
+  sceneIndexForCaption,
+} from "../js/parse-episode.mjs";
 
 const root = join(dirname(fileURLToPath(import.meta.url)), "..");
 const episodePath = join(root, "episodes", "0006-the-ratchet-that-never-turned.txt");
@@ -70,4 +74,61 @@ test("embedded player source matches the approved episode file", () => {
 test("caption duration stays in a readable band", () => {
   assert.equal(captionDurationMs("Hi."), 2800);
   assert.ok(captionDurationMs("word ".repeat(200)) <= 12000);
+});
+
+test("sceneIndexForCaption follows --- scene boundaries", () => {
+  const episode = parseEpisode(loadSource());
+  const changes = [];
+  let prev = -1;
+  episode.captions.forEach((_, i) => {
+    const scene = sceneIndexForCaption(episode, i);
+    if (scene !== prev) {
+      changes.push({ caption: i, scene });
+      prev = scene;
+    }
+  });
+  assert.equal(changes.length, episode.scenes.length);
+  assert.equal(changes[0].caption, 0);
+  assert.equal(sceneIndexForCaption(episode, -3), 0);
+  assert.equal(sceneIndexForCaption(episode, 999), episode.scenes.length - 1);
+  let offset = 0;
+  episode.scenes.forEach((scene, sceneIdx) => {
+    assert.equal(sceneIndexForCaption(episode, offset), sceneIdx);
+    assert.equal(
+      sceneIndexForCaption(episode, offset + scene.captions.length - 1),
+      sceneIdx,
+    );
+    offset += scene.captions.length;
+  });
+});
+
+test("player morphs through one distinct tableau per episode scene", () => {
+  const html = readFileSync(join(root, "index.html"), "utf8");
+  const episode = parseEpisode(loadSource());
+  assert.doesNotMatch(html, /FIRST_GLYPH/);
+  assert.match(html, /function sceneIndexForCaption/);
+  assert.match(html, /function beginSceneMorph/);
+  assert.match(html, /syncScene\(i\)/);
+  const morphMs = html.match(/var morphMs = (\d+)/);
+  assert.ok(morphMs);
+  const duration = Number(morphMs[1]);
+  assert.ok(duration >= 1000 && duration <= 1700, "morph duration should stay in 1–1.7s");
+  const block = html.match(/var TABLEAUX = \[([\s\S]*?)\];/);
+  assert.ok(block, "index.html must define TABLEAUX");
+  const ids = [...block[0].matchAll(/id:\s*"([^"]+)"/g)].map((m) => m[1]);
+  assert.equal(ids.length, episode.scenes.length);
+  assert.ok(ids.length >= 5 && ids.length <= 8);
+  assert.equal(new Set(ids).size, ids.length, "tableau ids must be distinct");
+  const arts = [...block[0].matchAll(/art:\s*\[([\s\S]*?)\]\.join/g)].map((m) => m[1]);
+  assert.equal(arts.length, ids.length);
+  const hashes = arts.map((art) => (art.match(/#/g) || []).length);
+  hashes.forEach((n, i) => {
+    assert.ok(n >= 40, `${ids[i]} should be dense enough to read as a morph (${n} #)`);
+  });
+  assert.ok(ids.includes("local-green"));
+  assert.ok(ids.includes("ratchet-82"));
+  assert.ok(ids.includes("runner-81"));
+  assert.ok(ids.includes("nvm-pin"));
+  assert.ok(ids.includes("gate-catch"));
+  assert.ok(ids.includes("restored-82"));
 });
