@@ -11,15 +11,19 @@ import {
   MORPH_PEAK_EASE,
   PHASE_DREAM,
   clampFlashMs,
+  clusterCells,
   dreamBurstPoints,
   flashDurationMs,
+  glyphUnits,
   isFlashActive,
   isFlashPending,
   morphPeakReady,
+  phaseEmojiStamps,
   scheduleDreamFlash,
   shouldFireSpeakStartFlash,
   shouldScheduleFlash,
   speakStartSource,
+  stampForGlyph,
 } from "../js/dream-flash.mjs";
 
 const root = join(dirname(fileURLToPath(import.meta.url)), "..");
@@ -344,6 +348,128 @@ test("breakthrough stays immediate, max window, and denser than morph-peak", () 
   );
 });
 
+test("phase palettes carry sparse mood emoji as stamp codepoints, not stickers", () => {
+  assert.deepEqual(phaseEmojiStamps("hook"), ["✨", "✧"]);
+  assert.deepEqual(phaseEmojiStamps("room"), []);
+  assert.deepEqual(phaseEmojiStamps("itch"), ["⚡"]);
+  assert.deepEqual(phaseEmojiStamps("turn"), ["💥", "✦"]);
+  assert.deepEqual(phaseEmojiStamps("craft"), []);
+  assert.deepEqual(phaseEmojiStamps("moral"), ["⚖"]);
+  assert.deepEqual(phaseEmojiStamps("encore"), ["❀"]);
+  assert.deepEqual(phaseEmojiStamps("credits"), []);
+
+  PHASE_IDS.forEach((phaseId) => {
+    const stamps = phaseEmojiStamps(phaseId);
+    assert.ok(stamps.length <= 2, `${phaseId} dumps too many emoji`);
+    const dream = PHASE_DREAM[phaseId];
+    assert.equal(typeof dream.emoji, "string");
+    assert.doesNotMatch(dream.emoji, /https?:|data:|image\//i);
+    stamps.forEach((ch) => {
+      assert.equal([...ch].length, 1);
+      const stamp = stampForGlyph(ch);
+      assert.ok(Array.isArray(stamp) && stamp.length >= 4, `${phaseId} ${ch} stamp`);
+      assert.ok(
+        stamp.some((row) => row.includes("#")),
+        `${phaseId} ${ch} is empty`,
+      );
+      assert.notDeepEqual(stamp, stampForGlyph("*"), `${ch} should not fall back to star`);
+    });
+  });
+});
+
+test("glyphUnits keeps emoji codepoints intact and strips variation selectors", () => {
+  assert.deepEqual(glyphUnits("*+"), ["*", "+"]);
+  assert.deepEqual(glyphUnits(">>*"), [">", ">", "*"]);
+  assert.deepEqual(glyphUnits("💥✦"), ["💥", "✦"]);
+  assert.deepEqual(glyphUnits("✨\uFE0F"), ["✨"]);
+  assert.deepEqual(glyphUnits(""), []);
+  assert.deepEqual(glyphUnits(undefined), []);
+});
+
+test("scheduled flashes carry phase emoji without changing speech or morph-peak timing", () => {
+  const speak = scheduleDreamFlash({
+    now: 900,
+    phaseId: "hook",
+    reason: "speak-start",
+  });
+  const peak = scheduleDreamFlash({
+    now: 1000,
+    phaseId: "hook",
+    reason: "morph-peak",
+  });
+  const smash = scheduleDreamFlash({
+    now: 40,
+    phaseId: "turn",
+    frame: 1,
+    reason: "breakthrough",
+  });
+  const room = scheduleDreamFlash({
+    now: 0,
+    phaseId: "room",
+    reason: "speak-start",
+  });
+  assert.equal(speak.at, 900);
+  assert.equal(speak.emoji, "✨✧");
+  assert.equal(peak.at, 1000 + MORPH_PEAK_DELAY_MS);
+  assert.equal(peak.emoji, "✨✧");
+  assert.ok(peak.density < speak.density);
+  assert.equal(smash.at, 40);
+  assert.equal(smash.durationMs, FLASH_MS_MAX);
+  assert.equal(smash.emoji, "💥✦");
+  assert.equal(room.emoji, "");
+  assert.equal(room.at, 0);
+});
+
+test("emoji stamps mix sparsely into the same arc burst, never as bitmaps", () => {
+  const hook = scheduleDreamFlash({
+    now: 0,
+    phaseId: "hook",
+    reason: "speak-start",
+  });
+  const smash = scheduleDreamFlash({
+    now: 0,
+    phaseId: "turn",
+    frame: 1,
+    reason: "breakthrough",
+  });
+  const glyphCells = clusterCells(hook.glyphs);
+  const emojiCells = clusterCells(hook.emoji);
+  assert.ok(glyphCells.length > 0);
+  assert.ok(emojiCells.length > 0);
+  assert.ok(
+    emojiCells.length < glyphCells.length,
+    "emoji cluster must stay smaller than the ASCII field",
+  );
+
+  const pts = dreamBurstPoints(hook, 800, 600);
+  const glyphPts = pts.filter((p) => p.kind !== "emoji");
+  const emojiPts = pts.filter((p) => p.kind === "emoji");
+  assert.ok(glyphPts.length >= 24);
+  assert.ok(emojiPts.length >= 4, "hook wonder should spark at all");
+  assert.ok(
+    emojiPts.length < glyphPts.length * 0.45,
+    `emoji ${emojiPts.length} vs glyph ${glyphPts.length} is a sticker dump`,
+  );
+
+  const smashPts = dreamBurstPoints(smash, 1280, 720);
+  const smashEmoji = smashPts.filter((p) => p.kind === "emoji");
+  assert.ok(smashEmoji.length > emojiPts.length);
+
+  [...pts, ...smashPts].forEach((p) => {
+    assert.ok(Number.isFinite(p.x) && Number.isFinite(p.y));
+    assert.ok(p.r > 0);
+    assert.equal(typeof p.h, "number");
+    assert.equal(p.src, undefined);
+    assert.equal(p.url, undefined);
+    assert.equal(p.bitmap, undefined);
+    assert.equal(p.glyph, undefined);
+  });
+  assert.deepEqual(
+    dreamBurstPoints(hook, 800, 600),
+    dreamBurstPoints(hook, 800, 600),
+  );
+});
+
 test("player inlines glyph-only dream flashes on speak, morph peak, and turn smash", () => {
   const html = readFileSync(join(root, "index.html"), "utf8");
   assert.match(html, /function scheduleDreamFlash/);
@@ -364,9 +490,14 @@ test("player inlines glyph-only dream flashes on speak, morph peak, and turn sma
   assert.doesNotMatch(html, /morphT >= 0\.52/);
   assert.match(html, /dataset\.dream/);
   assert.match(html, /reduceMotion/);
+  assert.match(html, /emoji: "✨✧"/);
+  assert.match(html, /emoji: "💥✦"/);
+  assert.match(html, /function glyphUnits/);
+  assert.match(html, /kind: "emoji"/);
   assert.doesNotMatch(html, /drawImage/);
   assert.doesNotMatch(html, /createImageBitmap/);
   assert.doesNotMatch(html, /new Image\(/);
+  assert.doesNotMatch(html, /fillText/);
   assert.doesNotMatch(html, /\.mp4|\.webm|\.png|\.jpg|\.gif|\.webp/i);
   assert.match(html, /keep in sync with js\/dream-flash\.mjs/);
 });

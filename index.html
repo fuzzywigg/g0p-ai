@@ -776,13 +776,13 @@ phase: encore
   var SPEAK_START_UTTERANCE = "utterance-start";
   var SPEAK_START_CAPTION = "caption-reveal";
   var PHASE_DREAM = {
-    hook: { hue: 48, glyphs: "*+", density: 0.55, speak: true, morphPeak: true, breakthrough: false },
-    room: { hue: 150, glyphs: "82", density: 0.32, speak: true, morphPeak: false, breakthrough: false },
-    itch: { hue: 18, glyphs: "81?", density: 0.62, speak: true, morphPeak: true, breakthrough: false },
-    turn: { hue: 300, glyphs: ">>*", density: 0.92, speak: true, morphPeak: true, breakthrough: true },
-    craft: { hue: 205, glyphs: "/#", density: 0.38, speak: true, morphPeak: false, breakthrough: false },
-    moral: { hue: 270, glyphs: "*~", density: 0.28, speak: true, morphPeak: false, breakthrough: false },
-    encore: { hue: 52, glyphs: "*O", density: 0.7, speak: true, morphPeak: true, breakthrough: false }
+    hook: { hue: 48, glyphs: "*+", emoji: "✨✧", density: 0.55, speak: true, morphPeak: true, breakthrough: false },
+    room: { hue: 150, glyphs: "82", emoji: "", density: 0.32, speak: true, morphPeak: false, breakthrough: false },
+    itch: { hue: 18, glyphs: "81?", emoji: "⚡", density: 0.62, speak: true, morphPeak: true, breakthrough: false },
+    turn: { hue: 300, glyphs: ">>*", emoji: "💥✦", density: 0.92, speak: true, morphPeak: true, breakthrough: true },
+    craft: { hue: 205, glyphs: "/#", emoji: "", density: 0.38, speak: true, morphPeak: false, breakthrough: false },
+    moral: { hue: 270, glyphs: "*~", emoji: "⚖", density: 0.28, speak: true, morphPeak: false, breakthrough: false },
+    encore: { hue: 52, glyphs: "*O", emoji: "❀", density: 0.7, speak: true, morphPeak: true, breakthrough: false }
   };
   var GLYPH_STAMPS = {
     "*": [" # # ", "  #  ", "#####", "  #  ", " # # "],
@@ -795,7 +795,14 @@ phase: encore
     "/": ["   #", "  # ", " #  ", "#   "],
     "#": ["####", "####", "####", "####"],
     "O": [" ## ", "#  #", "#  #", "#  #", " ## "],
-    "~": ["    ", " # #", "# # "]
+    "~": ["    ", " # #", "# # "],
+    "✨": ["  #  ", "# # #", " ### ", "# # #", "  #  "],
+    "✧": ["  #  ", " # # ", "#   #", " # # ", "  #  "],
+    "⚡": ["  ## ", " #   ", "#####", "   # ", " ##  "],
+    "💥": ["# # #", " ### ", "#####", " ### ", "# # #"],
+    "✦": ["  #  ", " ### ", "#####", " ### ", "  #  "],
+    "⚖": ["#   #", "# # #", " ### ", "  #  ", " ### "],
+    "❀": [" # # ", "# # #", " ### ", "#   #", "  #  "]
   };
 
   function clampFlashMs(ms) {
@@ -879,6 +886,7 @@ phase: encore
       reason: opts.reason,
       hue: dream.hue,
       glyphs: dream.glyphs,
+      emoji: dream.emoji || "",
       density: flashDensity(dream, opts.reason)
     };
   }
@@ -922,14 +930,32 @@ phase: encore
     return 2;
   }
 
+  function glyphUnits(str) {
+    if (str == null || str === "") return [];
+    var out = [];
+    var units = Array.from(String(str));
+    var i, ch;
+    for (i = 0; i < units.length; i++) {
+      ch = units[i];
+      if (!ch || ch === " ") continue;
+      if (ch >= "\uFE00" && ch <= "\uFE0F") continue;
+      out.push(ch);
+    }
+    return out;
+  }
+
+  function stampForGlyph(ch) {
+    return GLYPH_STAMPS[ch] || GLYPH_STAMPS["*"];
+  }
+
   function clusterCells(glyphs) {
-    var chars = String(glyphs || "*").split("").filter(Boolean);
+    var chars = glyphUnits(glyphs);
     var points = [];
     var col = 0;
     var g, ch, stamp, r, c, cell, n, y, x;
     for (g = 0; g < chars.length; g++) {
       ch = chars[g];
-      stamp = GLYPH_STAMPS[ch] || GLYPH_STAMPS["*"];
+      stamp = stampForGlyph(ch);
       for (r = 0; r < stamp.length; r++) {
         for (c = 0; c < stamp[r].length; c++) {
           cell = stamp[r][c];
@@ -953,7 +979,8 @@ phase: encore
     if (!flash) return [];
     var fieldW = Math.max(40, Number(width) || 0);
     var fieldH = Math.max(40, Number(height) || 0);
-    var cells = clusterCells(flash.glyphs);
+    var glyphCells = clusterCells(flash.glyphs || "*");
+    var emojiCells = clusterCells(flash.emoji);
     var rand = mulberry32(fnv1a(flash.phaseId + ":" + flash.reason + ":" + flash.frame));
     var density = Math.max(0.2, Math.min(1, Number(flash.density) || 0.4));
     var copies = 2 + Math.round(density * 5);
@@ -961,14 +988,14 @@ phase: encore
     var cy = fieldH * 0.38;
     var span = Math.min(fieldW, fieldH) * (0.18 + density * 0.16);
     var points = [];
-    var n, ox, oy, scale, c, cell;
+    var n, ox, oy, scale, c, cell, emojiCopies;
     for (n = 0; n < copies; n++) {
       ox = (rand() - 0.5) * span * 1.4;
       oy = (rand() - 0.5) * span * 0.9;
       scale = (0.55 + rand() * 0.7) * (span / 18);
-      for (c = 0; c < cells.length; c++) {
+      for (c = 0; c < glyphCells.length; c++) {
         if (rand() > 0.22 + density * 0.55) continue;
-        cell = cells[c];
+        cell = glyphCells[c];
         points.push({
           x: cx + ox + cell.col * scale,
           y: cy + oy + cell.row * scale,
@@ -976,7 +1003,28 @@ phase: encore
           h: flash.hue + (rand() - 0.5) * 18,
           s: 78 + rand() * 18,
           l: 58 + rand() * 22,
-          a: 0.72 + rand() * 0.28
+          a: 0.72 + rand() * 0.28,
+          kind: "glyph"
+        });
+      }
+    }
+    emojiCopies = flash.reason === "breakthrough" ? 2 : 1;
+    for (n = 0; n < emojiCopies && emojiCells.length; n++) {
+      ox = (rand() - 0.5) * span * 1.4;
+      oy = (rand() - 0.5) * span * 0.9;
+      scale = (0.55 + rand() * 0.7) * (span / 18);
+      for (c = 0; c < emojiCells.length; c++) {
+        if (rand() > 0.16 + density * 0.22) continue;
+        cell = emojiCells[c];
+        points.push({
+          x: cx + ox + cell.col * scale,
+          y: cy + oy + cell.row * scale,
+          r: 0.9 + density * 1.4 + rand() * 0.6,
+          h: flash.hue + (rand() - 0.5) * 18,
+          s: 78 + rand() * 18,
+          l: 58 + rand() * 22,
+          a: 0.72 + rand() * 0.28,
+          kind: "emoji"
         });
       }
     }

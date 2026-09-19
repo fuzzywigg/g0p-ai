@@ -1,6 +1,7 @@
 /**
  * Dream-flash scheduling for the Aesop theater.
  * Subliminal glyph / pointillism blips — never raster images.
+ * Sparse emoji-space stamps ride the same arcs; they are not stickers.
  * Browser player inlines the same logic in index.html — keep them aligned.
  */
 
@@ -19,6 +20,7 @@ export const PHASE_DREAM = Object.freeze({
   hook: Object.freeze({
     hue: 48,
     glyphs: "*+",
+    emoji: "✨✧",
     density: 0.55,
     speak: true,
     morphPeak: true,
@@ -27,6 +29,7 @@ export const PHASE_DREAM = Object.freeze({
   room: Object.freeze({
     hue: 150,
     glyphs: "82",
+    emoji: "",
     density: 0.32,
     speak: true,
     morphPeak: false,
@@ -35,6 +38,7 @@ export const PHASE_DREAM = Object.freeze({
   itch: Object.freeze({
     hue: 18,
     glyphs: "81?",
+    emoji: "⚡",
     density: 0.62,
     speak: true,
     morphPeak: true,
@@ -43,6 +47,7 @@ export const PHASE_DREAM = Object.freeze({
   turn: Object.freeze({
     hue: 300,
     glyphs: ">>*",
+    emoji: "💥✦",
     density: 0.92,
     speak: true,
     morphPeak: true,
@@ -51,6 +56,7 @@ export const PHASE_DREAM = Object.freeze({
   craft: Object.freeze({
     hue: 205,
     glyphs: "/#",
+    emoji: "",
     density: 0.38,
     speak: true,
     morphPeak: false,
@@ -59,6 +65,7 @@ export const PHASE_DREAM = Object.freeze({
   moral: Object.freeze({
     hue: 270,
     glyphs: "*~",
+    emoji: "⚖",
     density: 0.28,
     speak: true,
     morphPeak: false,
@@ -67,6 +74,7 @@ export const PHASE_DREAM = Object.freeze({
   encore: Object.freeze({
     hue: 52,
     glyphs: "*O",
+    emoji: "❀",
     density: 0.7,
     speak: true,
     morphPeak: true,
@@ -86,6 +94,13 @@ const GLYPH_STAMPS = Object.freeze({
   "#": Object.freeze(["####", "####", "####", "####"]),
   "O": Object.freeze([" ## ", "#  #", "#  #", "#  #", " ## "]),
   "~": Object.freeze(["    ", " # #", "# # "]),
+  "✨": Object.freeze(["  #  ", "# # #", " ### ", "# # #", "  #  "]),
+  "✧": Object.freeze(["  #  ", " # # ", "#   #", " # # ", "  #  "]),
+  "⚡": Object.freeze(["  ## ", " #   ", "#####", "   # ", " ##  "]),
+  "💥": Object.freeze(["# # #", " ### ", "#####", " ### ", "# # #"]),
+  "✦": Object.freeze(["  #  ", " ### ", "#####", " ### ", "  #  "]),
+  "⚖": Object.freeze(["#   #", "# # #", " ### ", "  #  ", " ### "]),
+  "❀": Object.freeze([" # # ", "# # #", " ### ", "#   #", "  #  "]),
 });
 
 export function clampFlashMs(ms) {
@@ -171,6 +186,7 @@ export function scheduleDreamFlash({
     reason,
     hue: dream.hue,
     glyphs: dream.glyphs,
+    emoji: dream.emoji || "",
     density: flashDensity(dream, reason),
   };
 }
@@ -213,12 +229,27 @@ function stampSize(ch) {
   return 2;
 }
 
-function clusterCells(glyphs) {
-  const chars = String(glyphs || "*").split("").filter(Boolean);
+const VARIATION_SELECTORS = /[\uFE00-\uFE0F]/;
+
+export function glyphUnits(str) {
+  if (str == null || str === "") return [];
+  return Array.from(String(str)).filter((ch) => ch && ch !== " " && !VARIATION_SELECTORS.test(ch));
+}
+
+export function stampForGlyph(ch) {
+  return GLYPH_STAMPS[ch] || GLYPH_STAMPS["*"];
+}
+
+export function phaseEmojiStamps(phaseId) {
+  return glyphUnits(PHASE_DREAM[phaseId]?.emoji || "");
+}
+
+export function clusterCells(glyphs) {
+  const chars = glyphUnits(glyphs);
   const points = [];
   let col = 0;
   for (const ch of chars) {
-    const stamp = GLYPH_STAMPS[ch] || GLYPH_STAMPS["*"];
+    const stamp = stampForGlyph(ch);
     for (let r = 0; r < stamp.length; r++) {
       const line = stamp[r];
       for (let c = 0; c < line.length; c++) {
@@ -246,7 +277,8 @@ export function dreamBurstPoints(flash, width, height) {
   if (!flash) return [];
   const w = Math.max(40, Number(width) || 0);
   const h = Math.max(40, Number(height) || 0);
-  const cells = clusterCells(flash.glyphs);
+  const glyphCells = clusterCells(flash.glyphs || "*");
+  const emojiCells = clusterCells(flash.emoji);
   const rand = mulberry32(fnv1a(`${flash.phaseId}:${flash.reason}:${flash.frame}`));
   const density = Math.max(0.2, Math.min(1, Number(flash.density) || 0.4));
   const copies = 2 + Math.round(density * 5);
@@ -254,22 +286,30 @@ export function dreamBurstPoints(flash, width, height) {
   const cy = h * 0.38;
   const span = Math.min(w, h) * (0.18 + density * 0.16);
   const points = [];
-  for (let n = 0; n < copies; n++) {
-    const ox = (rand() - 0.5) * span * 1.4;
-    const oy = (rand() - 0.5) * span * 0.9;
-    const scale = (0.55 + rand() * 0.7) * (span / 18);
-    for (const cell of cells) {
-      if (rand() > 0.22 + density * 0.55) continue;
-      points.push({
-        x: cx + ox + cell.col * scale,
-        y: cy + oy + cell.row * scale,
-        r: 0.9 + density * 1.4 + rand() * 0.6,
-        h: flash.hue + (rand() - 0.5) * 18,
-        s: 78 + rand() * 18,
-        l: 58 + rand() * 22,
-        a: 0.72 + rand() * 0.28,
-      });
+  function paint(cells, nCopies, keepFloor, kind) {
+    for (let n = 0; n < nCopies; n++) {
+      const ox = (rand() - 0.5) * span * 1.4;
+      const oy = (rand() - 0.5) * span * 0.9;
+      const scale = (0.55 + rand() * 0.7) * (span / 18);
+      for (const cell of cells) {
+        if (rand() > keepFloor) continue;
+        points.push({
+          x: cx + ox + cell.col * scale,
+          y: cy + oy + cell.row * scale,
+          r: 0.9 + density * 1.4 + rand() * 0.6,
+          h: flash.hue + (rand() - 0.5) * 18,
+          s: 78 + rand() * 18,
+          l: 58 + rand() * 22,
+          a: 0.72 + rand() * 0.28,
+          kind,
+        });
+      }
     }
+  }
+  paint(glyphCells, copies, 0.22 + density * 0.55, "glyph");
+  if (emojiCells.length) {
+    const emojiCopies = flash.reason === "breakthrough" ? 2 : 1;
+    paint(emojiCells, emojiCopies, 0.16 + density * 0.22, "emoji");
   }
   return points;
 }
