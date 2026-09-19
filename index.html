@@ -198,25 +198,147 @@ fetched: 2026-09-17
 (function () {
   "use strict";
 
-  var FIRST_GLYPH = [
-    "                    0006",
-    "",
-    "              #  #  #  #  #",
-    "           #                 #",
-    "        #      ###########      #",
-    "      #      ###############      #",
-    "     #     ####           ####     #",
-    "    #     ###               ###     #",
-    "    #     ##       82        ##     #",
-    "    #     ###               ###     #",
-    "     #     ####           ####     #",
-    "      #      ###############      #",
-    "        #      ###########      #",
-    "           #                 #",
-    "              #  #  #  #  #",
-    "                    ||",
-    "                  ==++=="
-  ].join("\n");
+  var TABLEAUX = [
+    {
+      id: "local-green",
+      art: [
+        "                    0006",
+        "",
+        "        ###########################",
+        "     ###                           ###",
+        "   ##         ###############         ##",
+        "  ##         ##             ##         ##",
+        " ##         ##    LOCAL      ##         ##",
+        " ##         ##     GREEN     ##         ##",
+        " ##         ##      OK       ##         ##",
+        "  ##         ##             ##         ##",
+        "   ##         ###############         ##",
+        "     ###                           ###",
+        "        ###########################",
+        "              HERE  !=  CI"
+      ].join("\n")
+    },
+    {
+      id: "ratchet-82",
+      art: [
+        "                    0006",
+        "",
+        "              #  #  #  #  #",
+        "           #                 #",
+        "        #      ###########      #",
+        "      #      ###############      #",
+        "     #     ####           ####     #",
+        "    #     ###               ###     #",
+        "    #     ##       82        ##     #",
+        "    #     ###               ###     #",
+        "     #     ####           ####     #",
+        "      #      ###############      #",
+        "        #      ###########      #",
+        "           #                 #",
+        "              #  #  #  #  #",
+        "                    ||",
+        "                  ==++=="
+      ].join("\n")
+    },
+    {
+      id: "runner-81",
+      art: [
+        "                    0006",
+        "",
+        "      #############################",
+        "      ##                         ##",
+        "      ##     CLEAN    RUNNER     ##",
+        "      ##                         ##",
+        "      ##   ###################   ##",
+        "      ##   ##               ##   ##",
+        "      ##   ##      81       ##   ##",
+        "      ##   ##               ##   ##",
+        "      ##   ###################   ##",
+        "      ##                         ##",
+        "      #############################",
+        "              ||           ||"
+      ].join("\n")
+    },
+    {
+      id: "nvm-pin",
+      art: [
+        "                    0006",
+        "",
+        "                     ##",
+        "                    ####",
+        "                   ######",
+        "                 ####|####",
+        "               ###   |   ###",
+        "             ##      |      ##",
+        "            ##     nvm       ##",
+        "            ##       |       ##",
+        "             ##      |      ##",
+        "               ###   |   ###",
+        "                 ####|####",
+        "                     |",
+        "                    ###",
+        "                   PRAYER"
+      ].join("\n")
+    },
+    {
+      id: "scar-promote",
+      art: [
+        "                    0006",
+        "",
+        "      #     #################     #",
+        "       #    ##  PROMOTE    ##    #",
+        "        #   #################   #",
+        "         #        ###        #",
+        "          #       ###       #",
+        "           #      ###      #",
+        "          #       ###       #",
+        "         #        ###        #",
+        "        #   #################   #",
+        "       #    ##  RETRACT    ##    #",
+        "      #     #################     #",
+        "              81  !=  82"
+      ].join("\n")
+    },
+    {
+      id: "gate-catch",
+      art: [
+        "                    0006",
+        "",
+        "      #  #  #  #  #  #  #  #  #",
+        "      #  #  #  #  #  #  #  #  #",
+        "      #  #  #  GATE  #  #  #  #",
+        "      #  #  #  #  #  #  #  #  #",
+        "      #  #  #  #  #  #  #  #  #",
+        "      #########################",
+        "      ##                     ##",
+        "      ##    81   CAUGHT      ##",
+        "      ##                     ##",
+        "      #########################",
+        "              IMMUNE"
+      ].join("\n")
+    },
+    {
+      id: "restored-82",
+      art: [
+        "                    0006",
+        "",
+        "              #  #  #  #  #",
+        "           #                 #",
+        "        #      ###########      #",
+        "      #      ###############      #",
+        "     #     ####           ####     #",
+        "    #     ###               ###     #",
+        "    #     ##       82        ##     #",
+        "    #     ###               ###     #",
+        "     #     ####           ####     #",
+        "      #      ###############      #",
+        "        #      ###########      #",
+        "           #                 #",
+        "              #  #  #  #  #",
+        "                  TURNED"
+      ].join("\n")
+    }
+  ];
 
   function parseEpisode(raw) {
     var text = String(raw).replace(/^\uFEFF/, "").replace(/\r\n/g, "\n");
@@ -251,6 +373,29 @@ fetched: 2026-09-17
       scenes: scenes,
       captions: captions
     };
+  }
+
+  function sceneIndexForCaption(ep, captionIndex) {
+    var sceneList = ep && ep.scenes ? ep.scenes : [];
+    if (!sceneList.length) return 0;
+    var idx = Number(captionIndex);
+    if (!isFinite(idx) || idx < 0) idx = 0;
+    var offset = 0;
+    var i, n;
+    for (i = 0; i < sceneList.length; i++) {
+      n = sceneList[i].captions.length;
+      if (idx < offset + n) return i;
+      offset += n;
+    }
+    return sceneList.length - 1;
+  }
+
+  function tableauForScene(sceneIndex) {
+    var last = TABLEAUX.length - 1;
+    var i = sceneIndex;
+    if (i < 0) i = 0;
+    if (i > last) i = last;
+    return TABLEAUX[i];
   }
 
   function captionDurationMs(caption) {
@@ -325,10 +470,11 @@ fetched: 2026-09-17
   var morphT = 0;
   var morphing = false;
   var morphStart = 0;
-  var morphMs = 1700;
+  var morphMs = 1600;
   var startedAt = 0;
   var reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
   var captionIndex = -1;
+  var currentScene = -1;
   var captionTimer = 0;
   var episode = parseEpisode(document.getElementById("episode-source").textContent);
   var w = 0;
@@ -343,7 +489,11 @@ fetched: 2026-09-17
     canvas.style.width = w + "px";
     canvas.style.height = h + "px";
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-    if (playing) assignTargets();
+    if (playing) {
+      assignTargets(tableauForScene(currentScene < 0 ? 0 : currentScene).art);
+      morphing = true;
+      morphStart = performance.now();
+    }
   }
 
   function spawnParticles() {
@@ -368,8 +518,8 @@ fetched: 2026-09-17
     }
   }
 
-  function assignTargets() {
-    var targets = glyphTargets(FIRST_GLYPH, w, h);
+  function assignTargets(art) {
+    var targets = glyphTargets(art, w, h);
     var i, p;
     while (particles.length < targets.length + 80) {
       particles.push({
@@ -431,20 +581,46 @@ fetched: 2026-09-17
   }
 
   function applyMorph(now) {
-    var t = Math.min(1, (now - morphStart) / (reduceMotion ? 1 : morphMs));
+    var duration = reduceMotion ? 1 : morphMs;
+    var t = Math.min(1, (now - morphStart) / duration);
     morphT = ease(t);
-    var i, p, wobble;
+    var i, p;
+    var cx = w / 2;
+    var cy = h * 0.4;
+    var breathe = reduceMotion ? 1 : 1 + Math.sin(now * 0.0011) * 0.014;
     for (i = 0; i < particles.length; i++) {
       p = particles[i];
-      p.x = p.sx + (p.tx - p.sx) * morphT;
-      p.y = p.sy + (p.ty - p.sy) * morphT;
-      if (t >= 1 && p.hold) {
-        wobble = reduceMotion ? 0 : Math.sin(now * 0.002 + i) * 0.35;
-        p.x = p.tx + wobble;
-        p.y = p.ty + Math.cos(now * 0.0018 + i * 0.7) * 0.28;
+      if (t < 1) {
+        p.x = p.sx + (p.tx - p.sx) * morphT;
+        p.y = p.sy + (p.ty - p.sy) * morphT;
+      } else if (p.hold) {
+        p.x = cx + (p.tx - cx) * breathe + (reduceMotion ? 0 : Math.sin(now * 0.002 + i) * 0.48);
+        p.y = cy + (p.ty - cy) * breathe + (reduceMotion ? 0 : Math.cos(now * 0.0018 + i * 0.7) * 0.4);
       }
     }
-    if (t >= 1) morphing = false;
+    if (t >= 1) {
+      morphing = false;
+      document.documentElement.dataset.morphing = "0";
+    }
+  }
+
+  function beginSceneMorph(sceneIndex) {
+    var tableau = tableauForScene(sceneIndex);
+    document.documentElement.dataset.glyph = tableau.id;
+    document.documentElement.dataset.scene = String(sceneIndex);
+    assignTargets(tableau.art);
+    morphing = true;
+    document.documentElement.dataset.morphing = "1";
+    morphStart = performance.now();
+    if (reduceMotion) morphStart = performance.now() - 2;
+  }
+
+  function syncScene(captionIdx) {
+    var sceneIdx = sceneIndexForCaption(episode, captionIdx);
+    if (sceneIdx === currentScene) return sceneIdx;
+    currentScene = sceneIdx;
+    beginSceneMorph(sceneIdx);
+    return sceneIdx;
   }
 
   function draw() {
@@ -483,6 +659,8 @@ fetched: 2026-09-17
     var i;
     for (i = 0; i < lines.length; i++) {
       captionIndex = i;
+      document.documentElement.dataset.caption = String(i);
+      syncScene(i);
       captionsEl.classList.remove("in");
       captionsEl.classList.add("out");
       await wait(playing && i === 0 ? 900 : 320);
@@ -498,12 +676,7 @@ fetched: 2026-09-17
     if (playing) return;
     playing = true;
     document.documentElement.dataset.state = "playing";
-    document.documentElement.dataset.glyph = "0006-ratchet";
     hintEl.textContent = "";
-    assignTargets();
-    morphing = true;
-    morphStart = performance.now();
-    if (reduceMotion) morphT = 1;
     playCaptions();
   }
 
