@@ -1,7 +1,9 @@
 /**
  * Parse an approved Aesop episode source.
- * Header keys, --- scene breaks, [Geryon] narration lines.
+ * Header keys, --- scene breaks in PHASES order, optional phase: key, [Geryon] narration.
  */
+
+import { PHASES } from "./phases.mjs";
 
 export function parseEpisode(raw) {
   const text = String(raw).replace(/^\uFEFF/, "").replace(/\r\n/g, "\n");
@@ -20,14 +22,24 @@ export function parseEpisode(raw) {
   const captions = [];
   for (const sceneText of parts.slice(1)) {
     const sceneCaptions = [];
+    let phase = "";
     for (const line of sceneText.split("\n")) {
+      const phaseMatch = line.match(/^phase:\s*(\S+)\s*$/);
+      if (phaseMatch) {
+        phase = phaseMatch[1];
+        continue;
+      }
       const match = line.match(/^\[Geryon\]\s*(.*)$/);
       if (!match) continue;
       const caption = match[1].trimEnd();
       sceneCaptions.push(caption);
       captions.push(caption);
     }
-    scenes.push({ captions: sceneCaptions });
+    const index = scenes.length;
+    scenes.push({
+      captions: sceneCaptions,
+      phase: phase || PHASES[index]?.id || "",
+    });
   }
 
   return {

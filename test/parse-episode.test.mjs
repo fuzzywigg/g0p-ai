@@ -54,6 +54,7 @@ test("scene breaks match --- separators after the header", () => {
   const episode = parseEpisode(loadSource());
   assert.equal(episode.scenes.length, 7);
   assert.equal(episode.scenes[0].captions.length, 2);
+  assert.equal(episode.scenes[0].phase, "hook");
   assert.equal(
     episode.scenes.reduce((n, scene) => n + scene.captions.length, 0),
     episode.captions.length,
@@ -102,33 +103,19 @@ test("sceneIndexForCaption follows --- scene boundaries", () => {
   });
 });
 
-test("player morphs through one distinct tableau per episode scene", () => {
+test("player morphs through the Aesop phase map, not a frozen glyph", () => {
   const html = readFileSync(join(root, "index.html"), "utf8");
   const episode = parseEpisode(loadSource());
   assert.doesNotMatch(html, /FIRST_GLYPH/);
   assert.match(html, /function sceneIndexForCaption/);
   assert.match(html, /function beginSceneMorph/);
+  assert.match(html, /function phaseFrameForCaption/);
   assert.match(html, /syncScene\(i\)/);
   const morphMs = html.match(/var morphMs = (\d+)/);
   assert.ok(morphMs);
   const duration = Number(morphMs[1]);
   assert.ok(duration >= 1000 && duration <= 1700, "morph duration should stay in 1–1.7s");
-  const block = html.match(/var TABLEAUX = \[([\s\S]*?)\];/);
-  assert.ok(block, "index.html must define TABLEAUX");
-  const ids = [...block[0].matchAll(/id:\s*"([^"]+)"/g)].map((m) => m[1]);
-  assert.equal(ids.length, episode.scenes.length);
-  assert.ok(ids.length >= 5 && ids.length <= 8);
-  assert.equal(new Set(ids).size, ids.length, "tableau ids must be distinct");
-  const arts = [...block[0].matchAll(/art:\s*\[([\s\S]*?)\]\.join/g)].map((m) => m[1]);
-  assert.equal(arts.length, ids.length);
-  const hashes = arts.map((art) => (art.match(/#/g) || []).length);
-  hashes.forEach((n, i) => {
-    assert.ok(n >= 40, `${ids[i]} should be dense enough to read as a morph (${n} #)`);
-  });
-  assert.ok(ids.includes("local-green"));
-  assert.ok(ids.includes("ratchet-82"));
-  assert.ok(ids.includes("runner-81"));
-  assert.ok(ids.includes("nvm-pin"));
-  assert.ok(ids.includes("gate-catch"));
-  assert.ok(ids.includes("restored-82"));
+  assert.match(html, /var PHASES = \[/);
+  assert.match(html, /var TABLEAUX = buildTableaux/);
+  assert.equal(episode.scenes.length, 7);
 });

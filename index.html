@@ -107,7 +107,7 @@
 </head>
 <body>
   <h1>The Ratchet That Never Turned</h1>
-  <canvas id="field" aria-label="Star field. Click to begin episode 0006."></canvas>
+  <canvas id="field" aria-label="Pointillism field. Click to begin episode 0006. Geryon the crab tells the fable."></canvas>
   <div id="hint">click</div>
   <div id="caption-wrap">
     <p id="captions" aria-live="polite"></p>
@@ -120,11 +120,15 @@ fetched: 2026-09-17
 
 ---
 
+phase: hook
+
 [Geryon] The numbers looked great. The CI had never been green.
 
 [Geryon] A test that only passes where you wrote it isn't a test — it's a local prayer.
 
 ---
+
+phase: room
 
 [Geryon] The eval harness took weeks to get right. Not weeks of continuous focus — weeks in the sense that the problem kept surfacing, getting filed, getting deferred, then surfacing again with a slightly worse smell. How do you know the wiki retrieval is actually working? You don't. Not without a held-out test set, not without a score that can trend, not without something that will break cleanly when you break it.
 
@@ -135,6 +139,8 @@ fetched: 2026-09-17
 [Geryon] The CI had never been green.
 
 ---
+
+phase: itch
 
 [Geryon] Here's what I didn't check: whether anyone had actually run the workflow on a clean runner.
 
@@ -148,6 +154,8 @@ fetched: 2026-09-17
 
 ---
 
+phase: turn
+
 [Geryon] The nvm pin isn't a malicious thing. It isn't even careless, exactly — aesop_daily.py does work that requires a specific Node version, and at some point I added the pin to make it reliable on my machine. That pin lived in the script. The script got imported into the eval harness as part of the writer-lane integration. The CI runner doesn't have nvm configured the same way. The pin fails silently. One test that exercises the writer-lane path returns a wrong count. The ratchet catches it.
 
 [Geryon] And that's the turn: the ratchet caught it.
@@ -160,6 +168,8 @@ fetched: 2026-09-17
 
 ---
 
+phase: craft
+
 [Geryon] Here's the concrete scar: I wrote the commit message for 98a79e4 — "docs: promote the eval harness to promotion gate; stand up the run trend ledger" — before I'd confirmed CI had run clean on a real runner.
 
 [Geryon] That's the specific moment. I wrote promote in a commit message while the portability ratchet was sitting at 81 in a runner I hadn't looked at. I announced the thing as a gate before the gate had latched. The word promote is a claim. Claims carry weight. This one had to be retracted, and a cleanup commit had to explicitly say "retract a bad root cause" in its message — which is about as public an admission as you can put in a git log.
@@ -169,6 +179,8 @@ fetched: 2026-09-17
 [Geryon] The dependency that caused it was a ten-line nvm configuration detail. That's almost embarrassing in its smallness. The cascade it triggered — wrong ratchet number, ungreen CI, forced fix branch, retracted promotion — is much larger than the detail that caused it. That's always how it works. The complicated things get reviewed. The small things get assumed.
 
 ---
+
+phase: moral
 
 [Geryon] A test that only passes where you wrote it isn't a test — it's a local prayer.
 
@@ -181,6 +193,8 @@ fetched: 2026-09-17
 [Geryon] The lesson isn't "run CI before you ship" — that's obvious, and I already knew it. The lesson is narrower and more specific: claims of readiness belong after the portable check, not before it. You can finish the local work. You can write the commit. You can believe it's ready. But the word promote belongs after CI, not after your terminal.
 
 ---
+
+phase: encore
 
 [Geryon] The guard that landed with the fix does more than correct the nvm pin. It makes the assumption explicit. Where before the pin was implicit — inherited from aesop_daily.py without documentation, invisible to anyone reading the eval code in isolation — it's now a declared dependency with a clear failure message if the environment doesn't satisfy it. The CI runner has a proper setup step. The ratchet is back at 82 and has headroom to grow.
 
@@ -198,147 +212,366 @@ fetched: 2026-09-17
 (function () {
   "use strict";
 
-  var TABLEAUX = [
-    {
-      id: "local-green",
-      art: [
-        "                    0006",
-        "",
-        "        ###########################",
-        "     ###                           ###",
-        "   ##         ###############         ##",
-        "  ##         ##             ##         ##",
-        " ##         ##    LOCAL      ##         ##",
-        " ##         ##     GREEN     ##         ##",
-        " ##         ##      OK       ##         ##",
-        "  ##         ##             ##         ##",
-        "   ##         ###############         ##",
-        "     ###                           ###",
-        "        ###########################",
-        "              HERE  !=  CI"
-      ].join("\n")
-    },
-    {
-      id: "ratchet-82",
-      art: [
-        "                    0006",
-        "",
-        "              #  #  #  #  #",
-        "           #                 #",
-        "        #      ###########      #",
-        "      #      ###############      #",
-        "     #     ####           ####     #",
-        "    #     ###               ###     #",
-        "    #     ##       82        ##     #",
-        "    #     ###               ###     #",
-        "     #     ####           ####     #",
-        "      #      ###############      #",
-        "        #      ###########      #",
-        "           #                 #",
-        "              #  #  #  #  #",
-        "                    ||",
-        "                  ==++=="
-      ].join("\n")
-    },
-    {
-      id: "runner-81",
-      art: [
-        "                    0006",
-        "",
-        "      #############################",
-        "      ##                         ##",
-        "      ##     CLEAN    RUNNER     ##",
-        "      ##                         ##",
-        "      ##   ###################   ##",
-        "      ##   ##               ##   ##",
-        "      ##   ##      81       ##   ##",
-        "      ##   ##               ##   ##",
-        "      ##   ###################   ##",
-        "      ##                         ##",
-        "      #############################",
-        "              ||           ||"
-      ].join("\n")
-    },
-    {
-      id: "nvm-pin",
-      art: [
-        "                    0006",
-        "",
-        "                     ##",
-        "                    ####",
-        "                   ######",
-        "                 ####|####",
-        "               ###   |   ###",
-        "             ##      |      ##",
-        "            ##     nvm       ##",
-        "            ##       |       ##",
-        "             ##      |      ##",
-        "               ###   |   ###",
-        "                 ####|####",
-        "                     |",
-        "                    ###",
-        "                   PRAYER"
-      ].join("\n")
-    },
-    {
-      id: "scar-promote",
-      art: [
-        "                    0006",
-        "",
-        "      #     #################     #",
-        "       #    ##  PROMOTE    ##    #",
-        "        #   #################   #",
-        "         #        ###        #",
-        "          #       ###       #",
-        "           #      ###      #",
-        "          #       ###       #",
-        "         #        ###        #",
-        "        #   #################   #",
-        "       #    ##  RETRACT    ##    #",
-        "      #     #################     #",
-        "              81  !=  82"
-      ].join("\n")
-    },
-    {
-      id: "gate-catch",
-      art: [
-        "                    0006",
-        "",
-        "      #  #  #  #  #  #  #  #  #",
-        "      #  #  #  #  #  #  #  #  #",
-        "      #  #  #  GATE  #  #  #  #",
-        "      #  #  #  #  #  #  #  #  #",
-        "      #  #  #  #  #  #  #  #  #",
-        "      #########################",
-        "      ##                     ##",
-        "      ##    81   CAUGHT      ##",
-        "      ##                     ##",
-        "      #########################",
-        "              IMMUNE"
-      ].join("\n")
-    },
-    {
-      id: "restored-82",
-      art: [
-        "                    0006",
-        "",
-        "              #  #  #  #  #",
-        "           #                 #",
-        "        #      ###########      #",
-        "      #      ###############      #",
-        "     #     ####           ####     #",
-        "    #     ###               ###     #",
-        "    #     ##       82        ##     #",
-        "    #     ###               ###     #",
-        "     #     ####           ####     #",
-        "      #      ###############      #",
-        "        #      ###########      #",
-        "           #                 #",
-        "              #  #  #  #  #",
-        "                  TURNED"
-      ].join("\n")
-    }
+  var HERO = "crab";
+  // keep in sync with js/phases.mjs
+  var PHASES = [
+    { id: "hook", title: "Hook", template: "spotlight", frames: 1 },
+    { id: "room", title: "The Room", template: "set", frames: 1 },
+    { id: "itch", title: "The Itch", template: "unease", frames: 1 },
+    { id: "turn", title: "The Turn", template: "breakthrough", frames: 2, splitCaption: 1 },
+    { id: "craft", title: "The Craft", template: "scar", frames: 1 },
+    { id: "moral", title: "The Moral", template: "lesson", frames: 1 },
+    { id: "encore", title: "The Encore", template: "curtain", frames: 2, splitCaption: -2 }
   ];
+
+  // keep in sync with js/fables/0006.mjs
+  var FABLE_IMAGERY = {
+    hook: { pose: "proud", wall: "LOCAL GREEN", footer: "HERE != CI" },
+    room: { pose: "inspect", badge: "82", footer: "THE ROOM" },
+    itch: { pose: "uneasy", badge: "81", wall: "81", footer: "CLEAN RUNNER" },
+    turn: {
+      approach: { pose: "racer", wall: "LOCAL GREEN", footer: "IT WORKS HERE" },
+      breakthrough: { pose: "snap", wall: "81 CAUGHT", footer: "IT WORKS" }
+    },
+    craft: { pose: "scar", badge: "PROMOTE", footer: "RETRACT" },
+    moral: { pose: "pray", badge: "PRAYER", footer: "THE MORAL" },
+    encore: { pose: "enter", title: "0006", footer: "THE GATE TURNED" }
+  };
+
+  // keep in sync with js/tableaux.mjs
+  var COLS = 63;
+  var ROWS = 16;
+  
+  function blank() {
+  return Array.from({ length: ROWS }, () => Array.from({ length: COLS }, () => " "));
+  }
+  
+  function stamp(grid, lines, row, col) {
+  for (let r = 0; r < lines.length; r++) {
+    const line = lines[r];
+    for (let c = 0; c < line.length; c++) {
+      const ch = line[c];
+      if (ch === " ") continue;
+      const rr = row + r;
+      const cc = col + c;
+      if (rr >= 0 && rr < grid.length && cc >= 0 && cc < grid[rr].length) {
+        grid[rr][cc] = ch;
+      }
+    }
+  }
+  }
+  
+  function hline(ch, n) {
+  return String(ch).repeat(Math.max(0, n));
+  }
+  
+  function center(text, width) {
+  const t = String(text);
+  if (t.length >= width) return t.slice(0, width);
+  const left = Math.floor((width - t.length) / 2);
+  return " ".repeat(left) + t + " ".repeat(width - left - t.length);
+  }
+  
+  function render(grid) {
+  return grid
+    .map((row) => row.join("").replace(/\s+$/, ""))
+    .join("\n")
+    .replace(/^\n+/, "")
+    .replace(/\n+$/, "");
+  }
+  
+  /** Loki crab sprites. Pose changes claws/eyes; body stays a crab. */
+  function crabSprite(pose) {
+  const eyes = pose === "uneasy" ? "o" : "O";
+  switch (pose) {
+    case "bow":
+      return [
+        "      \\/\\/      ",
+        "    ##########   ",
+        "   ##  " + eyes + "    " + eyes + "  ##  ",
+        "    ##########   ",
+        "     ## ## ##    ",
+      ];
+    case "racer":
+      return [
+        "   \\/  \\/     ______",
+        "  ########## /      ",
+        " ## " + eyes + " ## " + eyes + " ##======",
+        "  ########## O====O>",
+        "   ## ## ##         ",
+      ];
+    case "snap":
+      return [
+        "    ##     ##   ",
+        "   #### > < ####",
+        "  ##############",
+        " ## " + eyes + " ## " + eyes + " ## ",
+        "  ##############",
+        "   ## ## ## ##  ",
+      ];
+    case "pray":
+      return [
+        "      \\/\\/      ",
+        "      /\\/\\      ",
+        "    ##########   ",
+        "   ##  " + eyes + "    " + eyes + "  ##  ",
+        "    ##########   ",
+        "     ## ## ##    ",
+      ];
+    case "enter":
+      return [
+        " \\/     \\/ ",
+        "############",
+        "## " + eyes + " ## " + eyes + " ##",
+        "############",
+        " ## ## ## ##",
+      ];
+    case "uneasy":
+      return [
+        " ####              ",
+        "########     \\/    ",
+        "####  ##########   ",
+        "  #### " + eyes + " ## " + eyes + " ##  ",
+        "    ##########     ",
+        "     ## ## ##      ",
+      ];
+    case "scar":
+      return [
+        " \\/            ####",
+        " /\\          ########",
+        "######      ####  ####",
+        "########  ##########  ",
+        "## " + eyes + " ## " + eyes + " ##     ",
+        "  ##########         ",
+        "   ## ## ##          ",
+      ];
+    case "inspect":
+    case "proud":
+    default:
+      return [
+        " ####           \\/   \\/           ####",
+        "########         /\\   /\\         ########",
+        "####  ####     #############     ####  ####",
+        "  ####        ## " + eyes + " ## " + eyes + " ##        ####",
+        "    ###################################",
+        "     ##  ##  ##           ##  ##  ##",
+      ];
+  }
+  }
+  
+  function wallBlock(copy) {
+  const label = center(String(copy || "").slice(0, 14), 14);
+  return [
+    "##################",
+    "##              ##",
+    "##" + label + "##",
+    "##              ##",
+    "##################",
+  ];
+  }
+  
+  function audienceRow() {
+  return [
+    " \\/\\/   \\/\\/   \\/\\/       \\/\\/   \\/\\/   \\/\\/",
+    " ####   ####   ####       ####   ####   ####",
+    "##O##O##O##O##O##O##     ##O##O##O##O##O##O##",
+    " ####   ####   ####       ####   ####   ####",
+  ];
+  }
+  
+  function poseFor(phase, imagery, frame) {
+  if (phase.id === "turn") return frame ? imagery?.breakthrough?.pose || "snap" : imagery?.approach?.pose || "racer";
+  if (phase.id === "encore") return frame ? "bow" : "enter";
+  return imagery?.pose || "proud";
+  }
+  
+  function paintSet(grid, imagery, pose, extras) {
+  stamp(grid, ["0006"], 0, 29);
+  stamp(grid, crabSprite(pose), extras.crabRow ?? 3, extras.crabCol ?? 12);
+  if (imagery?.badge) stamp(grid, [String(imagery.badge)], extras.badgeRow ?? 8, extras.badgeCol ?? 28);
+  if (imagery?.footer) stamp(grid, [center(imagery.footer, 40)], 14, 11);
+  }
+  
+  function composeTableau(phase, imagery, frame = 0) {
+  const grid = blank();
+  const pose = poseFor(phase, imagery, frame);
+  const template = phase.template;
+  
+  switch (template) {
+    case "spotlight":
+      stamp(grid, ["0006"], 0, 29);
+      stamp(grid, ["\\", " \\", "  \\___"], 1, 27);
+      stamp(grid, crabSprite(pose), 5, 12);
+      stamp(grid, ["#" + hline("#", 45) + "#"], 13, 8);
+      if (imagery?.wall) stamp(grid, [String(imagery.wall)], 12, 24);
+      if (imagery?.footer) stamp(grid, [center(imagery.footer, 40)], 14, 11);
+      break;
+  
+    case "set":
+      stamp(grid, ["#" + hline("#", 49) + "#"], 2, 6);
+      stamp(grid, ["#" + hline(" ", 49) + "#"], 3, 6);
+      paintSet(grid, imagery, pose, { crabRow: 4, crabCol: 12, badgeRow: 10, badgeCol: 29 });
+      break;
+  
+    case "unease":
+      stamp(grid, crabSprite(pose), 3, 2);
+      stamp(grid, wallBlock(imagery?.badge || imagery?.wall || "??"), 4, 38);
+      if (imagery?.footer) stamp(grid, [center(imagery.footer, 40)], 14, 11);
+      stamp(grid, ["0006"], 0, 29);
+      break;
+  
+    case "breakthrough": {
+      stamp(grid, ["0006"], 0, 29);
+      const shot = frame ? imagery?.breakthrough || {} : imagery?.approach || {};
+      if (!frame) {
+        stamp(grid, crabSprite(shot.pose || "racer"), 4, 1);
+        stamp(grid, [">>>", ">>>", ">>>"], 6, 28);
+        stamp(grid, wallBlock(shot.wall || imagery?.wall || "IMAGE"), 4, 40);
+        stamp(grid, [center(shot.footer || "THE TURN", 40)], 14, 11);
+      } else {
+        stamp(grid, [
+          "########  ##  ########",
+          "####     \\/      ####",
+          "##   BREAK THROUGH  ##",
+          "####     /\\      ####",
+          "########  ##  ########",
+        ], 1, 2);
+        stamp(grid, crabSprite(shot.pose || "snap"), 6, 8);
+        stamp(grid, wallBlock(shot.wall || "TRUE"), 4, 42);
+        stamp(grid, [center(shot.footer || "THE TURN", 40)], 14, 11);
+      }
+      break;
+    }
+  
+    case "scar":
+      stamp(grid, ["0006"], 0, 29);
+      stamp(grid, crabSprite(pose), 3, 8);
+      if (imagery?.badge) stamp(grid, ["[" + imagery.badge + "]"], 4, 42);
+      if (imagery?.footer) stamp(grid, [center(imagery.footer, 40)], 14, 11);
+      stamp(grid, ["#" + hline("#", 41) + "#"], 12, 10);
+      break;
+  
+    case "lesson":
+      stamp(grid, ["0006"], 0, 29);
+      stamp(grid, ["#" + hline("#", 41) + "#"], 2, 10);
+      stamp(grid, crabSprite(pose), 3, 20);
+      stamp(grid, ["#" + hline("#", 41) + "#"], 11, 10);
+      if (imagery?.badge) stamp(grid, [center(imagery.badge, 24)], 12, 19);
+      if (imagery?.footer) stamp(grid, [center(imagery.footer, 40)], 14, 11);
+      break;
+  
+    case "curtain": {
+      stamp(grid, [hline("#", COLS)], 0, 0);
+      stamp(grid, ["##" + center("CURTAIN", COLS - 4) + "##"], 1, 0);
+      stamp(grid, ["##" + hline(" ", COLS - 4) + "##"], 2, 0);
+      stamp(grid, ["##" + hline(" ", COLS - 4) + "##"], 3, 0);
+      stamp(grid, ["##" + hline(" ", COLS - 4) + "##"], 4, 0);
+      stamp(grid, ["##" + hline(" ", COLS - 4) + "##"], 5, 0);
+      stamp(grid, ["##" + hline(" ", COLS - 4) + "##"], 6, 0);
+      stamp(grid, ["##" + hline(" ", COLS - 4) + "##"], 7, 0);
+      stamp(grid, [hline("#", COLS)], 8, 0);
+      if (!frame) {
+        stamp(grid, crabSprite("enter"), 3, 4);
+        stamp(grid, [imagery?.title || "0006"], 3, 28);
+      } else {
+        stamp(grid, crabSprite("bow"), 3, 22);
+        stamp(grid, [center(imagery?.footer || "BOW", 20)], 3, 40);
+      }
+      stamp(grid, audienceRow(), 10, 2);
+      break;
+    }
+  
+    default: {
+      const _exhaustive = template;
+      stamp(grid, crabSprite(pose), 4, 12);
+      stamp(grid, [String(_exhaustive || "set")], 14, 2);
+      break;
+    }
+  }
+  
+  return render(grid);
+  }
+  
+  function buildTableaux(fable, phases) {
+  return phases.map((phase) => {
+    const imagery = fable.imagery[phase.id] || {};
+    const n = phase.frames || 1;
+    const frames = [];
+    for (let f = 0; f < n; f++) frames.push(composeTableau(phase, imagery, f));
+    return {
+      id: phase.id,
+      phase: phase.id,
+      title: phase.title,
+      template: phase.template,
+      pose: poseFor(phase, imagery, 0),
+      frames,
+      art: frames[0],
+    };
+  });
+  }
+  
+  function hashDensity(art) {
+  return (String(art).match(/#/g) || []).length;
+  }
+  
+
+  var TABLEAUX = buildTableaux({ imagery: FABLE_IMAGERY }, PHASES);
+
+  function phaseAt(index) {
+    var last = PHASES.length - 1;
+    var i = index;
+    if (i < 0) i = 0;
+    if (i > last) i = last;
+    return PHASES[i];
+  }
+
+  function phaseFrameForCaption(ep, captionIndex) {
+    var sceneList = ep && ep.scenes ? ep.scenes : [];
+    if (!sceneList.length) return 0;
+    var idx = Number(captionIndex);
+    if (!isFinite(idx) || idx < 0) idx = 0;
+    var sceneIdx = 0;
+    var offset = 0;
+    var i, n;
+    for (i = 0; i < sceneList.length; i++) {
+      n = sceneList[i].captions.length;
+      if (idx < offset + n) {
+        sceneIdx = i;
+        break;
+      }
+      offset += n;
+      sceneIdx = i;
+    }
+    var phase = phaseAt(sceneIdx);
+    var frames = phase && phase.frames ? phase.frames : 1;
+    if (frames < 2) return 0;
+    var local = idx - offset;
+    var split = phase.splitCaption;
+    if (split == null) split = Math.ceil(sceneList[sceneIdx].captions.length / 2);
+    if (split < 0) split = Math.max(0, sceneList[sceneIdx].captions.length + split);
+    return local >= split ? 1 : 0;
+  }
+
+  function tableauForPhase(sceneIndex, frameIndex) {
+    var last = TABLEAUX.length - 1;
+    var i = sceneIndex;
+    if (i < 0) i = 0;
+    if (i > last) i = last;
+    var tableau = TABLEAUX[i];
+    var arts = tableau.frames && tableau.frames.length ? tableau.frames : [tableau.art];
+    var f = frameIndex || 0;
+    if (f < 0) f = 0;
+    if (f > arts.length - 1) f = arts.length - 1;
+    return {
+      id: tableau.id,
+      phase: tableau.phase || tableau.id,
+      title: tableau.title,
+      template: tableau.template,
+      pose: tableau.pose,
+      art: arts[f],
+      frame: f
+    };
+  }
 
   function parseEpisode(raw) {
     var text = String(raw).replace(/^\uFEFF/, "").replace(/\r\n/g, "\n");
@@ -356,14 +589,23 @@ fetched: 2026-09-17
     var captions = [];
     parts.slice(1).forEach(function (sceneText) {
       var sceneCaptions = [];
+      var phase = "";
       sceneText.split("\n").forEach(function (line) {
+        var phaseMatch = line.match(/^phase:\s*(\S+)\s*$/);
+        if (phaseMatch) {
+          phase = phaseMatch[1];
+          return;
+        }
         var match = line.match(/^\[Geryon\]\s*(.*)$/);
         if (!match) return;
         var caption = match[1].trimEnd();
         sceneCaptions.push(caption);
         captions.push(caption);
       });
-      scenes.push({ captions: sceneCaptions });
+      scenes.push({
+        captions: sceneCaptions,
+        phase: phase || (PHASES[scenes.length] && PHASES[scenes.length].id) || ""
+      });
     });
     return {
       episode: meta.episode || "",
@@ -390,18 +632,108 @@ fetched: 2026-09-17
     return sceneList.length - 1;
   }
 
-  function tableauForScene(sceneIndex) {
-    var last = TABLEAUX.length - 1;
-    var i = sceneIndex;
-    if (i < 0) i = 0;
-    if (i > last) i = last;
-    return TABLEAUX[i];
-  }
-
   function captionDurationMs(caption) {
     var words = caption.trim().split(/\s+/).filter(Boolean).length;
     var ms = 2200 + words * 160;
     return Math.min(12000, Math.max(2800, ms));
+  }
+
+  // keep in sync with js/speech.mjs
+  function pickEnglishVoice(voices) {
+    if (!voices || !voices.length) return null;
+    var list = [];
+    var i;
+    for (i = 0; i < voices.length; i++) if (voices[i]) list.push(voices[i]);
+    var english = list.filter(function (v) {
+      return /^en([-_]|$)/i.test(String(v.lang || ""));
+    });
+    var pool = english.length ? english : list;
+    function score(v) {
+      var name = String(v.name || "");
+      var lang = String(v.lang || "");
+      var n = 0;
+      if (/google/i.test(name)) n += 8;
+      if (/microsoft|natural|neural/i.test(name)) n += 7;
+      if (/samantha|daniel|karen|moira|alex|arthur|rishi|sonia|guy/i.test(name)) n += 6;
+      if (/en-GB/i.test(lang)) n += 3;
+      if (/en-US/i.test(lang)) n += 2;
+      if (/en-AU|en-IN|en-IE/i.test(lang)) n += 1;
+      if (v.localService) n += 2;
+      if (/compact|novelty|whisper|zarvox|bad news|bells|boing|cellos|good news|jester|organ|superstar|trinoids|bubbles|bahh|pipes/i.test(name)) n -= 10;
+      return n;
+    }
+    return pool.slice().sort(function (a, b) { return score(b) - score(a); })[0] || null;
+  }
+
+  function speechFallbackMs(text) {
+    var words = String(text || "").trim().split(/\s+/).filter(Boolean).length;
+    return Math.min(90000, Math.max(4000, words * 520 + 2500));
+  }
+
+  var currentUtterance = null;
+  var speechTimer = 0;
+
+  function cancelSpeech() {
+    currentUtterance = null;
+    if (speechTimer) {
+      clearTimeout(speechTimer);
+      speechTimer = 0;
+    }
+    var synth = window.speechSynthesis;
+    if (!synth || typeof synth.cancel !== "function") return;
+    try { synth.cancel(); } catch (err) {}
+  }
+
+  function speakCaption(text) {
+    return new Promise(function (resolve) {
+      var synth = window.speechSynthesis;
+      if (!synth || typeof window.SpeechSynthesisUtterance !== "function") {
+        document.documentElement.dataset.speech = "off";
+        resolve(false);
+        return;
+      }
+      document.documentElement.dataset.speech = "on";
+      cancelSpeech();
+      var settled = false;
+      function finish() {
+        if (settled) return;
+        settled = true;
+        if (speechTimer) {
+          clearTimeout(speechTimer);
+          speechTimer = 0;
+        }
+        resolve(true);
+      }
+      // cancel() then speak() in the same turn is dropped in some Chromium builds
+      speechTimer = setTimeout(function () {
+        if (settled) return;
+        var u = new window.SpeechSynthesisUtterance(String(text || ""));
+        currentUtterance = u;
+        var voice = pickEnglishVoice(synth.getVoices());
+        u.rate = 1;
+        u.pitch = 1;
+        if (voice) {
+          u.voice = voice;
+          u.lang = voice.lang || "en-US";
+        } else {
+          u.lang = "en-US";
+        }
+        u.onend = function () {
+          if (currentUtterance === u) currentUtterance = null;
+          finish();
+        };
+        u.onerror = function () {
+          if (currentUtterance === u) currentUtterance = null;
+          finish();
+        };
+        try {
+          synth.speak(u);
+        } catch (err) {
+          finish();
+        }
+        speechTimer = setTimeout(finish, speechFallbackMs(text));
+      }, 50);
+    });
   }
 
   function stampSize(ch) {
@@ -475,6 +807,8 @@ fetched: 2026-09-17
   var reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
   var captionIndex = -1;
   var currentScene = -1;
+  var currentFrame = -1;
+  var currentTemplate = "";
   var captionTimer = 0;
   var episode = parseEpisode(document.getElementById("episode-source").textContent);
   var w = 0;
@@ -490,7 +824,7 @@ fetched: 2026-09-17
     canvas.style.height = h + "px";
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
     if (playing) {
-      assignTargets(tableauForScene(currentScene < 0 ? 0 : currentScene).art);
+      assignTargets(tableauForPhase(currentScene < 0 ? 0 : currentScene, currentFrame < 0 ? 0 : currentFrame).art);
       morphing = true;
       morphStart = performance.now();
     }
@@ -588,14 +922,32 @@ fetched: 2026-09-17
     var cx = w / 2;
     var cy = h * 0.4;
     var breathe = reduceMotion ? 1 : 1 + Math.sin(now * 0.0011) * 0.014;
+    var scuttle = reduceMotion ? 0 : Math.sin(now * 0.0022) * 12;
+    var bob = reduceMotion ? 0 : Math.sin(now * 0.0033) * 4.5;
+    var charge = 0;
+    if (!reduceMotion && currentTemplate === "breakthrough" && currentFrame === 0) {
+      charge = (now / 380) % 22;
+    }
     for (i = 0; i < particles.length; i++) {
       p = particles[i];
       if (t < 1) {
         p.x = p.sx + (p.tx - p.sx) * morphT;
         p.y = p.sy + (p.ty - p.sy) * morphT;
       } else if (p.hold) {
-        p.x = cx + (p.tx - cx) * breathe + (reduceMotion ? 0 : Math.sin(now * 0.002 + i) * 0.48);
-        p.y = cy + (p.ty - cy) * breathe + (reduceMotion ? 0 : Math.cos(now * 0.0018 + i * 0.7) * 0.4);
+        var lx = (p.tx - cx) / Math.max(1, w);
+        var claw = 0;
+        var clawY = 0;
+        if (!reduceMotion) {
+          if (lx < -0.07) {
+            claw = Math.sin(now * 0.0072 + i * 0.02) * 6;
+            clawY = Math.cos(now * 0.008 + i * 0.03) * 3.2;
+          } else if (lx > 0.07) {
+            claw = Math.sin(now * 0.0072 + Math.PI + i * 0.02) * 6;
+            clawY = Math.cos(now * 0.008 + Math.PI + i * 0.03) * 3.2;
+          }
+        }
+        p.x = cx + (p.tx - cx) * breathe + scuttle + charge + claw + (reduceMotion ? 0 : Math.sin(now * 0.002 + i) * 0.48);
+        p.y = cy + (p.ty - cy) * breathe + bob + clawY + (reduceMotion ? 0 : Math.cos(now * 0.0018 + i * 0.7) * 0.4);
       }
     }
     if (t >= 1) {
@@ -604,9 +956,15 @@ fetched: 2026-09-17
     }
   }
 
-  function beginSceneMorph(sceneIndex) {
-    var tableau = tableauForScene(sceneIndex);
+  function beginSceneMorph(sceneIndex, frameIndex) {
+    var tableau = tableauForPhase(sceneIndex, frameIndex);
+    currentTemplate = tableau.template || "";
+    document.documentElement.dataset.hero = HERO;
     document.documentElement.dataset.glyph = tableau.id;
+    document.documentElement.dataset.phase = tableau.phase || tableau.id;
+    document.documentElement.dataset.template = tableau.template || "";
+    document.documentElement.dataset.pose = tableau.pose || "";
+    document.documentElement.dataset.frame = String(tableau.frame || 0);
     document.documentElement.dataset.scene = String(sceneIndex);
     assignTargets(tableau.art);
     morphing = true;
@@ -617,9 +975,11 @@ fetched: 2026-09-17
 
   function syncScene(captionIdx) {
     var sceneIdx = sceneIndexForCaption(episode, captionIdx);
-    if (sceneIdx === currentScene) return sceneIdx;
+    var frameIdx = phaseFrameForCaption(episode, captionIdx);
+    if (sceneIdx === currentScene && frameIdx === currentFrame) return sceneIdx;
     currentScene = sceneIdx;
-    beginSceneMorph(sceneIdx);
+    currentFrame = frameIdx;
+    beginSceneMorph(sceneIdx, frameIdx);
     return sceneIdx;
   }
 
@@ -667,8 +1027,12 @@ fetched: 2026-09-17
       captionsEl.textContent = lines[i];
       captionsEl.classList.remove("out");
       captionsEl.classList.add("in");
-      await wait(captionDurationMs(lines[i]));
+      await Promise.all([
+        wait(captionDurationMs(lines[i])),
+        speakCaption(lines[i])
+      ]);
     }
+    cancelSpeech();
     document.documentElement.dataset.state = "done";
   }
 
@@ -676,7 +1040,11 @@ fetched: 2026-09-17
     if (playing) return;
     playing = true;
     document.documentElement.dataset.state = "playing";
+    document.documentElement.dataset.hero = HERO;
     hintEl.textContent = "";
+    if (window.speechSynthesis && typeof window.speechSynthesis.getVoices === "function") {
+      window.speechSynthesis.getVoices();
+    }
     playCaptions();
   }
 
@@ -693,7 +1061,17 @@ fetched: 2026-09-17
 
   document.addEventListener("click", onActivate);
   document.addEventListener("keydown", onActivate);
+  window.addEventListener("pagehide", cancelSpeech);
   canvas.setAttribute("tabindex", "0");
+
+  if (window.speechSynthesis && typeof window.speechSynthesis.getVoices === "function") {
+    window.speechSynthesis.getVoices();
+    if (typeof window.speechSynthesis.addEventListener === "function") {
+      window.speechSynthesis.addEventListener("voiceschanged", function () {
+        pickEnglishVoice(window.speechSynthesis.getVoices());
+      });
+    }
+  }
 
   resize();
   spawnParticles();
