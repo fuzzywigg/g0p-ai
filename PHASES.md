@@ -38,7 +38,7 @@ phase: room
 ## New fable
 
 1. Add `episodes/<id>-….txt` with seven sections labeled `phase: hook` … `phase: encore`.
-2. Add `js/fables/<id>.mjs` exporting `{ episode, title, imagery }` keyed by those phase ids. For `turn`, set `approach` and `breakthrough` walls. For `encore`, set `title` and `footer`.
+2. Add `js/fables/<id>.mjs` exporting `{ episode, title, imagery }` keyed by those phase ids. For `turn`, set `approach` and `breakthrough` walls (and `burst` copy for the smash frame). For `encore`, set `title` and `footer`.
 3. Point the player at that imagery (`FABLE_IMAGERY` in `index.html`, keep in sync) and embed the episode source.
 4. Geryon stays the crab. Browser `speechSynthesis` still speaks each caption on the same click.
 
