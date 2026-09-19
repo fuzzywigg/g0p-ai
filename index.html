@@ -775,6 +775,24 @@ phase: encore
   var MORPH_PEAK_DELAY_MS = 18;
   var SPEAK_START_UTTERANCE = "utterance-start";
   var SPEAK_START_CAPTION = "caption-reveal";
+  var FLASH_CHROMA = {
+    satMin: 92,
+    satSpan: 8,
+    lightMin: 68,
+    lightSpan: 20,
+    lightMax: 92,
+    alphaMin: 0.88,
+    alphaSpan: 0.12,
+    hueJitter: 22,
+    emojiSatLift: 4,
+    emojiLightLift: 8,
+    fieldSat: 96,
+    fieldLight: 82,
+    stampCopies: 1,
+    breakthroughStampCopies: 3,
+    breakthroughGlyphCopyBoost: 1,
+    breakthroughStampKeepLift: 0.08
+  };
   var PHASE_DREAM = {
     hook: { hue: 48, glyphs: "*+", emoji: "✨✧", density: 0.55, speak: true, morphPeak: true, breakthrough: false },
     room: { hue: 150, glyphs: "82", emoji: "", density: 0.32, speak: true, morphPeak: false, breakthrough: false },
@@ -862,6 +880,30 @@ phase: encore
     if (reason === "breakthrough") return Math.min(1, dream.density + 0.18);
     if (reason === "morph-peak") return Math.max(0.2, dream.density * 0.72);
     return dream.density;
+  }
+
+  function flashPointChroma(rand, kind) {
+    var emoji = kind === "emoji";
+    var s = Math.min(
+      100,
+      FLASH_CHROMA.satMin + rand() * FLASH_CHROMA.satSpan + (emoji ? FLASH_CHROMA.emojiSatLift : 0)
+    );
+    var l = Math.min(
+      FLASH_CHROMA.lightMax,
+      FLASH_CHROMA.lightMin + rand() * FLASH_CHROMA.lightSpan + (emoji ? FLASH_CHROMA.emojiLightLift : 0)
+    );
+    var a = Math.min(1, FLASH_CHROMA.alphaMin + rand() * FLASH_CHROMA.alphaSpan);
+    return { s: s, l: l, a: a };
+  }
+
+  function stampScatterCopies(reason) {
+    return reason === "breakthrough" ? FLASH_CHROMA.breakthroughStampCopies : FLASH_CHROMA.stampCopies;
+  }
+
+  function stampKeepFloor(density, reason) {
+    var base = 0.16 + density * 0.22;
+    if (reason === "breakthrough") return Math.min(0.55, base + FLASH_CHROMA.breakthroughStampKeepLift);
+    return base;
   }
 
   function scheduleDreamFlash(opts) {
@@ -983,12 +1025,12 @@ phase: encore
     var emojiCells = clusterCells(flash.emoji);
     var rand = mulberry32(fnv1a(flash.phaseId + ":" + flash.reason + ":" + flash.frame));
     var density = Math.max(0.2, Math.min(1, Number(flash.density) || 0.4));
-    var copies = 2 + Math.round(density * 5);
+    var copies = 2 + Math.round(density * 5) + (flash.reason === "breakthrough" ? FLASH_CHROMA.breakthroughGlyphCopyBoost : 0);
     var cx = fieldW * (0.42 + (flash.reason === "breakthrough" ? 0.08 : 0));
     var cy = fieldH * 0.38;
     var span = Math.min(fieldW, fieldH) * (0.18 + density * 0.16);
     var points = [];
-    var n, ox, oy, scale, c, cell, emojiCopies;
+    var n, ox, oy, scale, c, cell, chroma, emojiCopies;
     for (n = 0; n < copies; n++) {
       ox = (rand() - 0.5) * span * 1.4;
       oy = (rand() - 0.5) * span * 0.9;
@@ -996,34 +1038,36 @@ phase: encore
       for (c = 0; c < glyphCells.length; c++) {
         if (rand() > 0.22 + density * 0.55) continue;
         cell = glyphCells[c];
+        chroma = flashPointChroma(rand, "glyph");
         points.push({
           x: cx + ox + cell.col * scale,
           y: cy + oy + cell.row * scale,
           r: 0.9 + density * 1.4 + rand() * 0.6,
-          h: flash.hue + (rand() - 0.5) * 18,
-          s: 78 + rand() * 18,
-          l: 58 + rand() * 22,
-          a: 0.72 + rand() * 0.28,
+          h: flash.hue + (rand() - 0.5) * FLASH_CHROMA.hueJitter,
+          s: chroma.s,
+          l: chroma.l,
+          a: chroma.a,
           kind: "glyph"
         });
       }
     }
-    emojiCopies = flash.reason === "breakthrough" ? 2 : 1;
+    emojiCopies = stampScatterCopies(flash.reason);
     for (n = 0; n < emojiCopies && emojiCells.length; n++) {
       ox = (rand() - 0.5) * span * 1.4;
       oy = (rand() - 0.5) * span * 0.9;
       scale = (0.55 + rand() * 0.7) * (span / 18);
       for (c = 0; c < emojiCells.length; c++) {
-        if (rand() > 0.16 + density * 0.22) continue;
+        if (rand() > stampKeepFloor(density, flash.reason)) continue;
         cell = emojiCells[c];
+        chroma = flashPointChroma(rand, "emoji");
         points.push({
           x: cx + ox + cell.col * scale,
           y: cy + oy + cell.row * scale,
           r: 0.9 + density * 1.4 + rand() * 0.6,
-          h: flash.hue + (rand() - 0.5) * 18,
-          s: 78 + rand() * 18,
-          l: 58 + rand() * 22,
-          a: 0.72 + rand() * 0.28,
+          h: flash.hue + (rand() - 0.5) * FLASH_CHROMA.hueJitter,
+          s: chroma.s,
+          l: chroma.l,
+          a: chroma.a,
           kind: "emoji"
         });
       }
@@ -1344,7 +1388,7 @@ phase: encore
     for (i = 0; i < particles.length; i++) {
       p = particles[i];
       if (flashing && p.hold && i % 17 === 0) {
-        ctx.fillStyle = "hsla(" + dreamFlash.hue + ",72%,78%," + Math.min(1, p.a + 0.32) + ")";
+        ctx.fillStyle = "hsla(" + dreamFlash.hue + "," + FLASH_CHROMA.fieldSat + "%," + FLASH_CHROMA.fieldLight + "%," + Math.min(1, p.a + 0.32) + ")";
         ctx.beginPath();
         ctx.arc(p.x, p.y, p.r + 0.35, 0, Math.PI * 2);
         ctx.fill();

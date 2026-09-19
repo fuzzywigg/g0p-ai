@@ -7,6 +7,7 @@ import { PHASE_IDS } from "../js/phases.mjs";
 import {
   FLASH_MS_MAX,
   FLASH_MS_MIN,
+  FLASH_CHROMA,
   MORPH_PEAK_DELAY_MS,
   MORPH_PEAK_EASE,
   PHASE_DREAM,
@@ -14,6 +15,7 @@ import {
   clusterCells,
   dreamBurstPoints,
   flashDurationMs,
+  flashPointChroma,
   glyphUnits,
   isFlashActive,
   isFlashPending,
@@ -24,6 +26,8 @@ import {
   shouldScheduleFlash,
   speakStartSource,
   stampForGlyph,
+  stampKeepFloor,
+  stampScatterCopies,
 } from "../js/dream-flash.mjs";
 
 const root = join(dirname(fileURLToPath(import.meta.url)), "..");
@@ -470,6 +474,109 @@ test("emoji stamps mix sparsely into the same arc burst, never as bitmaps", () =
   );
 });
 
+test("dream-flash arcs lift HSL chroma and lightness during the active window", () => {
+  assert.equal(FLASH_CHROMA.satMin, 92);
+  assert.equal(FLASH_CHROMA.satSpan, 8);
+  assert.equal(FLASH_CHROMA.lightMin, 68);
+  assert.equal(FLASH_CHROMA.lightSpan, 20);
+  assert.equal(FLASH_CHROMA.lightMax, 92);
+  assert.equal(FLASH_CHROMA.alphaMin, 0.88);
+  assert.equal(FLASH_CHROMA.emojiSatLift, 4);
+  assert.equal(FLASH_CHROMA.emojiLightLift, 8);
+  assert.equal(FLASH_CHROMA.fieldSat, 96);
+  assert.equal(FLASH_CHROMA.fieldLight, 82);
+
+  const floor = flashPointChroma(() => 0, "glyph");
+  const ceil = flashPointChroma(() => 1, "glyph");
+  const emojiFloor = flashPointChroma(() => 0, "emoji");
+  const emojiCeil = flashPointChroma(() => 1, "emoji");
+  assert.equal(floor.s, FLASH_CHROMA.satMin);
+  assert.equal(floor.l, FLASH_CHROMA.lightMin);
+  assert.equal(floor.a, FLASH_CHROMA.alphaMin);
+  assert.equal(ceil.s, 100);
+  assert.equal(ceil.l, FLASH_CHROMA.lightMin + FLASH_CHROMA.lightSpan);
+  assert.equal(ceil.a, 1);
+  assert.equal(emojiFloor.s, FLASH_CHROMA.satMin + FLASH_CHROMA.emojiSatLift);
+  assert.equal(emojiFloor.l, FLASH_CHROMA.lightMin + FLASH_CHROMA.emojiLightLift);
+  assert.ok(emojiFloor.s > floor.s);
+  assert.ok(emojiFloor.l > floor.l);
+  assert.equal(emojiCeil.s, 100);
+  assert.equal(emojiCeil.l, FLASH_CHROMA.lightMax);
+
+  PHASE_IDS.forEach((phaseId) => {
+    const flash = scheduleDreamFlash({
+      now: 0,
+      phaseId,
+      frame: phaseId === "turn" ? 1 : 0,
+      reason: "speak-start",
+    });
+    const pts = dreamBurstPoints(flash, 800, 600);
+    assert.ok(pts.length >= 24, phaseId);
+    pts.forEach((p) => {
+      assert.ok(p.s >= FLASH_CHROMA.satMin, `${phaseId} sat ${p.s}`);
+      assert.ok(p.s <= 100);
+      assert.ok(p.l >= FLASH_CHROMA.lightMin, `${phaseId} light ${p.l}`);
+      assert.ok(p.l <= FLASH_CHROMA.lightMax);
+      assert.ok(p.a >= FLASH_CHROMA.alphaMin);
+      assert.ok(p.a <= 1);
+      if (p.kind === "emoji") {
+        assert.ok(p.s >= FLASH_CHROMA.satMin + FLASH_CHROMA.emojiSatLift * 0.5);
+        assert.ok(p.l >= FLASH_CHROMA.lightMin + FLASH_CHROMA.emojiLightLift * 0.5);
+      }
+    });
+  });
+});
+
+test("breakthrough stamp scatter is slightly denser, still glyph/arc, timing unchanged", () => {
+  assert.equal(stampScatterCopies("speak-start"), 1);
+  assert.equal(stampScatterCopies("morph-peak"), 1);
+  assert.equal(stampScatterCopies("breakthrough"), 3);
+  assert.ok(stampKeepFloor(1, "breakthrough") > stampKeepFloor(1, "speak-start"));
+
+  const speak = scheduleDreamFlash({
+    now: 40,
+    phaseId: "turn",
+    frame: 1,
+    reason: "speak-start",
+  });
+  const smash = scheduleDreamFlash({
+    now: 40,
+    phaseId: "turn",
+    frame: 1,
+    reason: "breakthrough",
+  });
+  const peak = scheduleDreamFlash({
+    now: 40,
+    phaseId: "turn",
+    frame: 1,
+    reason: "morph-peak",
+  });
+  assert.equal(speak.at, 40);
+  assert.equal(smash.at, 40);
+  assert.equal(smash.durationMs, FLASH_MS_MAX);
+  assert.equal(peak.at, 40 + MORPH_PEAK_DELAY_MS);
+  assert.equal(isFlashActive(smash, 40 + smash.durationMs), false);
+
+  const speakPts = dreamBurstPoints(speak, 1280, 720);
+  const smashPts = dreamBurstPoints(smash, 1280, 720);
+  const speakEmoji = speakPts.filter((p) => p.kind === "emoji");
+  const smashEmoji = smashPts.filter((p) => p.kind === "emoji");
+  const smashGlyph = smashPts.filter((p) => p.kind === "glyph");
+  assert.ok(smashPts.length > speakPts.length);
+  assert.ok(smashEmoji.length > speakEmoji.length);
+  assert.ok(
+    smashEmoji.length < smashGlyph.length * 0.55,
+    `smash emoji ${smashEmoji.length} vs glyph ${smashGlyph.length} dumps stickers`,
+  );
+  smashPts.forEach((p) => {
+    assert.ok(p.s >= FLASH_CHROMA.satMin);
+    assert.ok(p.l >= FLASH_CHROMA.lightMin);
+    assert.equal(p.src, undefined);
+    assert.equal(p.bitmap, undefined);
+    assert.equal(p.glyph, undefined);
+  });
+});
+
 test("player inlines glyph-only dream flashes on speak, morph peak, and turn smash", () => {
   const html = readFileSync(join(root, "index.html"), "utf8");
   assert.match(html, /function scheduleDreamFlash/);
@@ -494,6 +601,17 @@ test("player inlines glyph-only dream flashes on speak, morph peak, and turn sma
   assert.match(html, /emoji: "💥✦"/);
   assert.match(html, /function glyphUnits/);
   assert.match(html, /kind: "emoji"/);
+  assert.match(html, /FLASH_CHROMA/);
+  assert.match(html, /function flashPointChroma/);
+  assert.match(html, /function stampScatterCopies/);
+  assert.match(html, /satMin: 92/);
+  assert.match(html, /lightMin: 68/);
+  assert.match(html, /fieldSat: 96/);
+  assert.match(html, /fieldLight: 82/);
+  assert.match(html, /breakthroughStampCopies: 3/);
+  assert.doesNotMatch(html, /s: 78 \+ rand/);
+  assert.doesNotMatch(html, /l: 58 \+ rand/);
+  assert.doesNotMatch(html, /hsla\(" \+ dreamFlash\.hue \+ ",72%,78%/);
   assert.doesNotMatch(html, /drawImage/);
   assert.doesNotMatch(html, /createImageBitmap/);
   assert.doesNotMatch(html, /new Image\(/);
