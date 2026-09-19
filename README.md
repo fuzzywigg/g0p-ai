@@ -14,7 +14,7 @@ Approved public fable only. Source: [fuzzywigg.ai/aesop/the-ratchet-that-never-t
 
 1. Open the page. Black field, drifting white dots.
 2. Click once. The dots gather into Geryon — a living ASCII crab — who scuttles through the shared phase templates. The Turn is a race-car smash-through; the Encore is a curtain bow to an audience of crabs.
-3. [Geryon] captions scroll underneath; the browser speaks each line in sync (Web Speech API). No audio file. If speech isn’t available, captions still play. Occasional dream-flashes — dense colored glyph-particle bursts, 8–36ms — lock to utterance start (caption reveal if speech is off), a late softened morph-peak, and the Turn smash, then dissolve back into the crab. Sparse emoji-space stamps (spark, bolt, smash, scales, florette) ride the same arcs. Never photos. `prefers-reduced-motion` skips them.
+3. [Geryon] captions scroll underneath; the browser speaks each line in sync (Web Speech API). No audio file. If speech isn’t available, captions still play. Occasional dream-flashes — dense colored glyph-particle bursts, 8–36ms — lock to utterance start (caption reveal if speech is off), a late softened morph-peak, and the Turn smash, then dissolve back into the crab. During that window the arcs run hot (HSL sat 92–100, light 68–92) and snap back to the cool white crab. Sparse emoji-space stamps (spark, bolt, smash, scales, florette) ride the same arcs. Never photos. `prefers-reduced-motion` skips them.
 
 No menus. No DNS cutover. Production alias: `https://g0p-ai.vercel.app` (not apex `g0p.ai`). Live twin while name settles: `https://g0p-aesop.vercel.app`.
 

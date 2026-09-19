@@ -15,6 +15,30 @@ export const MORPH_PEAK_DELAY_MS = 18;
 export const SPEAK_START_UTTERANCE = "utterance-start";
 export const SPEAK_START_CAPTION = "caption-reveal";
 
+/**
+ * Hot chroma for the active 8–36ms window only.
+ * Cool white crab field is untouched after expireDreamFlash.
+ * Numbers are HSL: sat/light percents, alpha 0–1.
+ */
+export const FLASH_CHROMA = Object.freeze({
+  satMin: 92,
+  satSpan: 8,
+  lightMin: 68,
+  lightSpan: 20,
+  lightMax: 92,
+  alphaMin: 0.88,
+  alphaSpan: 0.12,
+  hueJitter: 22,
+  emojiSatLift: 4,
+  emojiLightLift: 8,
+  fieldSat: 96,
+  fieldLight: 82,
+  stampCopies: 1,
+  breakthroughStampCopies: 3,
+  breakthroughGlyphCopyBoost: 1,
+  breakthroughStampKeepLift: 0.08,
+});
+
 /** Phase palettes: hue + glyph stamps that vector-map into colored dots. */
 export const PHASE_DREAM = Object.freeze({
   hook: Object.freeze({
@@ -165,6 +189,34 @@ function flashDensity(dream, reason) {
   return dream.density;
 }
 
+export function flashPointChroma(rand, kind = "glyph") {
+  const emoji = kind === "emoji";
+  const s = Math.min(
+    100,
+    FLASH_CHROMA.satMin + rand() * FLASH_CHROMA.satSpan + (emoji ? FLASH_CHROMA.emojiSatLift : 0),
+  );
+  const l = Math.min(
+    FLASH_CHROMA.lightMax,
+    FLASH_CHROMA.lightMin + rand() * FLASH_CHROMA.lightSpan + (emoji ? FLASH_CHROMA.emojiLightLift : 0),
+  );
+  const a = Math.min(1, FLASH_CHROMA.alphaMin + rand() * FLASH_CHROMA.alphaSpan);
+  return { s, l, a };
+}
+
+export function stampScatterCopies(reason) {
+  return reason === "breakthrough"
+    ? FLASH_CHROMA.breakthroughStampCopies
+    : FLASH_CHROMA.stampCopies;
+}
+
+export function stampKeepFloor(density, reason) {
+  const base = 0.16 + density * 0.22;
+  if (reason === "breakthrough") {
+    return Math.min(0.55, base + FLASH_CHROMA.breakthroughStampKeepLift);
+  }
+  return base;
+}
+
 export function scheduleDreamFlash({
   now,
   phaseId,
@@ -281,7 +333,10 @@ export function dreamBurstPoints(flash, width, height) {
   const emojiCells = clusterCells(flash.emoji);
   const rand = mulberry32(fnv1a(`${flash.phaseId}:${flash.reason}:${flash.frame}`));
   const density = Math.max(0.2, Math.min(1, Number(flash.density) || 0.4));
-  const copies = 2 + Math.round(density * 5);
+  const copies =
+    2 +
+    Math.round(density * 5) +
+    (flash.reason === "breakthrough" ? FLASH_CHROMA.breakthroughGlyphCopyBoost : 0);
   const cx = w * (0.42 + (flash.reason === "breakthrough" ? 0.08 : 0));
   const cy = h * 0.38;
   const span = Math.min(w, h) * (0.18 + density * 0.16);
@@ -293,14 +348,15 @@ export function dreamBurstPoints(flash, width, height) {
       const scale = (0.55 + rand() * 0.7) * (span / 18);
       for (const cell of cells) {
         if (rand() > keepFloor) continue;
+        const chroma = flashPointChroma(rand, kind);
         points.push({
           x: cx + ox + cell.col * scale,
           y: cy + oy + cell.row * scale,
           r: 0.9 + density * 1.4 + rand() * 0.6,
-          h: flash.hue + (rand() - 0.5) * 18,
-          s: 78 + rand() * 18,
-          l: 58 + rand() * 22,
-          a: 0.72 + rand() * 0.28,
+          h: flash.hue + (rand() - 0.5) * FLASH_CHROMA.hueJitter,
+          s: chroma.s,
+          l: chroma.l,
+          a: chroma.a,
           kind,
         });
       }
@@ -308,8 +364,12 @@ export function dreamBurstPoints(flash, width, height) {
   }
   paint(glyphCells, copies, 0.22 + density * 0.55, "glyph");
   if (emojiCells.length) {
-    const emojiCopies = flash.reason === "breakthrough" ? 2 : 1;
-    paint(emojiCells, emojiCopies, 0.16 + density * 0.22, "emoji");
+    paint(
+      emojiCells,
+      stampScatterCopies(flash.reason),
+      stampKeepFloor(density, flash.reason),
+      "emoji",
+    );
   }
   return points;
 }
