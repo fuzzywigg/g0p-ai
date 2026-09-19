@@ -7,6 +7,13 @@
 export const FLASH_MS_MIN = 8;
 export const FLASH_MS_MAX = 36;
 
+/** Morph-peak waits until the crab is mostly formed, then a short hold. */
+export const MORPH_PEAK_EASE = 0.84;
+export const MORPH_PEAK_DELAY_MS = 18;
+
+export const SPEAK_START_UTTERANCE = "utterance-start";
+export const SPEAK_START_CAPTION = "caption-reveal";
+
 /** Phase palettes: hue + glyph stamps that vector-map into colored dots. */
 export const PHASE_DREAM = Object.freeze({
   hook: Object.freeze({
@@ -91,7 +98,7 @@ export function flashDurationMs(phaseId, reason) {
   const dream = PHASE_DREAM[phaseId];
   const density = dream?.density ?? 0.4;
   if (reason === "breakthrough") return clampFlashMs(FLASH_MS_MAX);
-  if (reason === "morph-peak") return clampFlashMs(14 + density * 18);
+  if (reason === "morph-peak") return clampFlashMs(16 + density * 12);
   return clampFlashMs(10 + density * 16);
 }
 
@@ -107,28 +114,70 @@ export function shouldScheduleFlash({ reduceMotion, reason, phaseId, frame } = {
   return false;
 }
 
+/** Voice onstart when synthesis can run; caption class-in is the silent fallback. */
+export function speakStartSource({ canSpeak } = {}) {
+  return canSpeak ? SPEAK_START_UTTERANCE : SPEAK_START_CAPTION;
+}
+
+export function shouldFireSpeakStartFlash({
+  source,
+  event,
+  reduceMotion = false,
+  utteranceStarted = false,
+} = {}) {
+  if (reduceMotion) return false;
+  if (source === SPEAK_START_UTTERANCE) {
+    if (event === SPEAK_START_UTTERANCE) return true;
+    return event === "utterance-error" && !utteranceStarted;
+  }
+  return event === SPEAK_START_CAPTION;
+}
+
+export function morphPeakReady({ easeT, threshold = MORPH_PEAK_EASE } = {}) {
+  return Number(easeT) >= threshold;
+}
+
+function flashDelayMs(reason, delayMs) {
+  if (delayMs != null && Number.isFinite(Number(delayMs))) {
+    return Math.max(0, Number(delayMs));
+  }
+  return reason === "morph-peak" ? MORPH_PEAK_DELAY_MS : 0;
+}
+
+function flashDensity(dream, reason) {
+  if (reason === "breakthrough") return Math.min(1, dream.density + 0.18);
+  if (reason === "morph-peak") return Math.max(0.2, dream.density * 0.72);
+  return dream.density;
+}
+
 export function scheduleDreamFlash({
   now,
   phaseId,
   frame = 0,
   reason,
   reduceMotion = false,
+  delayMs,
 } = {}) {
   if (!shouldScheduleFlash({ reduceMotion, reason, phaseId, frame })) return null;
   const dream = PHASE_DREAM[phaseId];
   const durationMs = flashDurationMs(phaseId, reason);
-  const density =
-    reason === "breakthrough" ? Math.min(1, dream.density + 0.18) : dream.density;
+  const delay = flashDelayMs(reason, delayMs);
+  const at = Number(now) + delay;
   return {
-    at: now,
+    at: Number.isFinite(at) ? at : delay,
     durationMs,
     phaseId,
     frame,
     reason,
     hue: dream.hue,
     glyphs: dream.glyphs,
-    density,
+    density: flashDensity(dream, reason),
   };
+}
+
+export function isFlashPending(flash, now) {
+  if (!flash) return false;
+  return now < flash.at;
 }
 
 export function isFlashActive(flash, now) {
