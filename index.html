@@ -705,14 +705,20 @@ phase: encore
     try { synth.cancel(); } catch (err) {}
   }
 
-  function speakCaption(text) {
+  function speechIsAvailable() {
+    var synth = window.speechSynthesis;
+    return Boolean(synth && typeof synth.speak === "function" && typeof window.SpeechSynthesisUtterance === "function");
+  }
+
+  function speakCaption(text, opts) {
+    opts = opts || {};
     return new Promise(function (resolve) {
-      var synth = window.speechSynthesis;
-      if (!synth || typeof window.SpeechSynthesisUtterance !== "function") {
+      if (!speechIsAvailable()) {
         document.documentElement.dataset.speech = "off";
         resolve(false);
         return;
       }
+      var synth = window.speechSynthesis;
       document.documentElement.dataset.speech = "on";
       cancelSpeech();
       var settled = false;
@@ -739,6 +745,9 @@ phase: encore
         } else {
           u.lang = "en-US";
         }
+        u.onstart = function () {
+          if (typeof opts.onStart === "function") opts.onStart();
+        };
         u.onend = function () {
           if (currentUtterance === u) currentUtterance = null;
           finish();
@@ -760,6 +769,10 @@ phase: encore
   // keep in sync with js/dream-flash.mjs
   var FLASH_MS_MIN = 8;
   var FLASH_MS_MAX = 36;
+  var MORPH_PEAK_EASE = 0.84;
+  var MORPH_PEAK_DELAY_MS = 18;
+  var SPEAK_START_UTTERANCE = "utterance-start";
+  var SPEAK_START_CAPTION = "caption-reveal";
   var PHASE_DREAM = {
     hook: { hue: 48, glyphs: "*+", density: 0.55, speak: true, morphPeak: true, breakthrough: false },
     room: { hue: 150, glyphs: "82", density: 0.32, speak: true, morphPeak: false, breakthrough: false },
@@ -793,7 +806,7 @@ phase: encore
     var dream = PHASE_DREAM[phaseId];
     var density = dream && dream.density != null ? dream.density : 0.4;
     if (reason === "breakthrough") return clampFlashMs(FLASH_MS_MAX);
-    if (reason === "morph-peak") return clampFlashMs(14 + density * 18);
+    if (reason === "morph-peak") return clampFlashMs(8 + density * 12);
     return clampFlashMs(10 + density * 16);
   }
 
@@ -810,6 +823,35 @@ phase: encore
     return false;
   }
 
+  function speakStartSource(opts) {
+    opts = opts || {};
+    return opts.canSpeak ? SPEAK_START_UTTERANCE : SPEAK_START_CAPTION;
+  }
+
+  function shouldFireSpeakStartFlash(opts) {
+    opts = opts || {};
+    if (opts.reduceMotion) return false;
+    if (opts.source === SPEAK_START_UTTERANCE) return opts.event === SPEAK_START_UTTERANCE;
+    return opts.event === SPEAK_START_CAPTION;
+  }
+
+  function morphPeakReady(opts) {
+    opts = opts || {};
+    var threshold = opts.threshold != null ? opts.threshold : MORPH_PEAK_EASE;
+    return Number(opts.easeT) >= threshold;
+  }
+
+  function flashDelayMs(reason, delayMs) {
+    if (delayMs != null && isFinite(Number(delayMs))) return Math.max(0, Number(delayMs));
+    return reason === "morph-peak" ? MORPH_PEAK_DELAY_MS : 0;
+  }
+
+  function flashDensity(dream, reason) {
+    if (reason === "breakthrough") return Math.min(1, dream.density + 0.18);
+    if (reason === "morph-peak") return Math.max(0.2, dream.density * 0.72);
+    return dream.density;
+  }
+
   function scheduleDreamFlash(opts) {
     opts = opts || {};
     var frame = opts.frame || 0;
@@ -822,17 +864,23 @@ phase: encore
     })) return null;
     var dream = PHASE_DREAM[opts.phaseId];
     var durationMs = flashDurationMs(opts.phaseId, opts.reason);
-    var density = opts.reason === "breakthrough" ? Math.min(1, dream.density + 0.18) : dream.density;
+    var delay = flashDelayMs(opts.reason, opts.delayMs);
+    var at = Number(opts.now) + delay;
     return {
-      at: opts.now,
+      at: isFinite(at) ? at : delay,
       durationMs: durationMs,
       phaseId: opts.phaseId,
       frame: frame,
       reason: opts.reason,
       hue: dream.hue,
       glyphs: dream.glyphs,
-      density: density
+      density: flashDensity(dream, opts.reason)
     };
+  }
+
+  function isFlashPending(flash, now) {
+    if (!flash) return false;
+    return now < flash.at;
   }
 
   function isFlashActive(flash, now) {
@@ -1111,9 +1159,11 @@ phase: encore
     var duration = reduceMotion ? 1 : morphMs;
     var t = Math.min(1, (now - morphStart) / duration);
     morphT = ease(t);
-    if (morphPeakArmed && morphT >= 0.52) {
+    if (morphPeakArmed && morphPeakReady({ easeT: morphT })) {
       morphPeakArmed = false;
-      triggerDreamFlash("morph-peak");
+      if (!isFlashActive(dreamFlash, now) && !isFlashPending(dreamFlash, now)) {
+        triggerDreamFlash("morph-peak");
+      }
     }
     var i, p;
     var cx = w / 2;
@@ -1202,12 +1252,19 @@ phase: encore
     if (!flash) return;
     dreamFlash = flash;
     dreamPoints = dreamBurstPoints(flash, w, h);
-    document.documentElement.dataset.dream = "1";
+    document.documentElement.dataset.dream = isFlashActive(flash, performance.now()) ? "1" : "0";
   }
 
   function expireDreamFlash(now) {
     if (!dreamFlash) return false;
-    if (isFlashActive(dreamFlash, now)) return true;
+    if (isFlashPending(dreamFlash, now)) {
+      document.documentElement.dataset.dream = "0";
+      return false;
+    }
+    if (isFlashActive(dreamFlash, now)) {
+      document.documentElement.dataset.dream = "1";
+      return true;
+    }
     dreamFlash = null;
     dreamPoints = [];
     document.documentElement.dataset.dream = "0";
@@ -1279,10 +1336,27 @@ phase: encore
       captionsEl.textContent = lines[i];
       captionsEl.classList.remove("out");
       captionsEl.classList.add("in");
-      triggerDreamFlash("speak-start");
+      var source = speakStartSource({ canSpeak: speechIsAvailable() });
+      if (shouldFireSpeakStartFlash({
+        source: source,
+        event: "caption-reveal",
+        reduceMotion: reduceMotion
+      })) {
+        triggerDreamFlash("speak-start");
+      }
       await Promise.all([
         wait(captionDurationMs(lines[i])),
-        speakCaption(lines[i])
+        speakCaption(lines[i], {
+          onStart: function () {
+            if (shouldFireSpeakStartFlash({
+              source: source,
+              event: "utterance-start",
+              reduceMotion: reduceMotion
+            })) {
+              triggerDreamFlash("speak-start");
+            }
+          }
+        })
       ]);
     }
     cancelSpeech();

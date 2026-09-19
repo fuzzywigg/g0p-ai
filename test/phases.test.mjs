@@ -116,7 +116,7 @@ test("player inlines the phase map, composer, and frame-aware morph", () => {
   assert.match(html, /dataset\.frame/);
   assert.match(html, /breakthrough/);
   assert.match(html, /curtain/);
-  assert.match(html, /speakCaption\(lines\[i\]\)/);
+  assert.match(html, /speakCaption\(lines\[i\]/);
   assert.match(html, /episode: "0006"/);
   assert.match(html, /burst: "BREAK THROUGH"/);
   assert.doesNotMatch(html, /shuffle\(particles\)/);

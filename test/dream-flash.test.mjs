@@ -7,13 +7,19 @@ import { PHASE_IDS } from "../js/phases.mjs";
 import {
   FLASH_MS_MAX,
   FLASH_MS_MIN,
+  MORPH_PEAK_DELAY_MS,
+  MORPH_PEAK_EASE,
   PHASE_DREAM,
   clampFlashMs,
   dreamBurstPoints,
   flashDurationMs,
   isFlashActive,
+  isFlashPending,
+  morphPeakReady,
   scheduleDreamFlash,
+  shouldFireSpeakStartFlash,
   shouldScheduleFlash,
+  speakStartSource,
 } from "../js/dream-flash.mjs";
 
 const root = join(dirname(fileURLToPath(import.meta.url)), "..");
@@ -208,15 +214,134 @@ test("unknown phase or reason does not invent a flash", () => {
   );
 });
 
+test("speak-start locks to utterance start when speech can run, else caption reveal", () => {
+  assert.equal(speakStartSource({ canSpeak: true }), "utterance-start");
+  assert.equal(speakStartSource({ canSpeak: false }), "caption-reveal");
+  assert.equal(speakStartSource({}), "caption-reveal");
+
+  assert.equal(
+    shouldFireSpeakStartFlash({
+      source: "utterance-start",
+      event: "caption-reveal",
+    }),
+    false,
+  );
+  assert.equal(
+    shouldFireSpeakStartFlash({
+      source: "utterance-start",
+      event: "utterance-start",
+    }),
+    true,
+  );
+  assert.equal(
+    shouldFireSpeakStartFlash({
+      source: "caption-reveal",
+      event: "caption-reveal",
+    }),
+    true,
+  );
+  assert.equal(
+    shouldFireSpeakStartFlash({
+      source: "caption-reveal",
+      event: "utterance-start",
+    }),
+    false,
+  );
+  assert.equal(
+    shouldFireSpeakStartFlash({
+      reduceMotion: true,
+      source: "utterance-start",
+      event: "utterance-start",
+    }),
+    false,
+  );
+  const flash = scheduleDreamFlash({
+    now: 900,
+    phaseId: "hook",
+    reason: "speak-start",
+  });
+  assert.equal(flash.at, 900);
+  assert.equal(isFlashPending(flash, 900), false);
+  assert.equal(isFlashActive(flash, 900), true);
+});
+
+test("morph-peak waits until the crab silhouette is mostly formed, then a short delay", () => {
+  assert.ok(MORPH_PEAK_EASE > 0.7);
+  assert.ok(MORPH_PEAK_DELAY_MS >= 12);
+  assert.ok(MORPH_PEAK_DELAY_MS <= 24);
+  assert.equal(morphPeakReady({ easeT: 0.52 }), false);
+  assert.equal(morphPeakReady({ easeT: MORPH_PEAK_EASE - 0.01 }), false);
+  assert.equal(morphPeakReady({ easeT: MORPH_PEAK_EASE }), true);
+  assert.equal(morphPeakReady({ easeT: 1 }), true);
+
+  const peak = scheduleDreamFlash({
+    now: 1000,
+    phaseId: "hook",
+    reason: "morph-peak",
+  });
+  const speak = scheduleDreamFlash({
+    now: 1000,
+    phaseId: "hook",
+    reason: "speak-start",
+  });
+  assert.ok(peak);
+  assert.equal(peak.at, 1000 + MORPH_PEAK_DELAY_MS);
+  assert.equal(isFlashPending(peak, 1000), true);
+  assert.equal(isFlashActive(peak, 1000), false);
+  assert.equal(isFlashActive(peak, peak.at), true);
+  assert.equal(isFlashPending(peak, peak.at), false);
+  assert.ok(peak.durationMs < speak.durationMs);
+  assert.ok(peak.density < speak.density);
+  assert.ok(peak.durationMs >= FLASH_MS_MIN);
+  assert.ok(peak.durationMs <= FLASH_MS_MAX);
+});
+
+test("breakthrough stays immediate, max window, and denser than morph-peak", () => {
+  const smash = scheduleDreamFlash({
+    now: 40,
+    phaseId: "turn",
+    frame: 1,
+    reason: "breakthrough",
+  });
+  const peak = scheduleDreamFlash({
+    now: 40,
+    phaseId: "turn",
+    frame: 1,
+    reason: "morph-peak",
+  });
+  assert.equal(smash.at, 40);
+  assert.equal(smash.durationMs, FLASH_MS_MAX);
+  assert.ok(smash.density > peak.density);
+  assert.ok(peak.at > smash.at);
+  assert.equal(
+    scheduleDreamFlash({
+      now: 40,
+      phaseId: "itch",
+      frame: 1,
+      reason: "breakthrough",
+    }),
+    null,
+  );
+});
+
 test("player inlines glyph-only dream flashes on speak, morph peak, and turn smash", () => {
   const html = readFileSync(join(root, "index.html"), "utf8");
   assert.match(html, /function scheduleDreamFlash/);
   assert.match(html, /function dreamBurstPoints/);
   assert.match(html, /function isFlashActive/);
+  assert.match(html, /function isFlashPending/);
+  assert.match(html, /function speakStartSource/);
+  assert.match(html, /function shouldFireSpeakStartFlash/);
+  assert.match(html, /function morphPeakReady/);
   assert.match(html, /function triggerDreamFlash/);
   assert.match(html, /triggerDreamFlash\("speak-start"\)/);
   assert.match(html, /triggerDreamFlash\("morph-peak"\)/);
   assert.match(html, /triggerDreamFlash\("breakthrough"\)/);
+  assert.match(html, /u\.onstart/);
+  assert.match(html, /utterance-start/);
+  assert.match(html, /caption-reveal/);
+  assert.match(html, /MORPH_PEAK_EASE/);
+  assert.doesNotMatch(html, /morphT >= 0\.52/);
   assert.match(html, /dataset\.dream/);
   assert.match(html, /reduceMotion/);
   assert.doesNotMatch(html, /drawImage/);

@@ -83,7 +83,8 @@ test("player speaks each caption on the advance path and cancels on end", () => 
   assert.match(html, /speechSynthesis/);
   assert.match(html, /synth\.cancel/);
   assert.match(html, /synth\.speak/);
-  assert.match(html, /speakCaption\(lines\[i\]\)/);
+  assert.match(html, /speakCaption\(lines\[i\]/);
+  assert.match(html, /u\.onstart/);
   assert.match(html, /Promise\.all/);
   assert.match(html, /cancelSpeech\(\)/);
   assert.match(html, /pagehide/);
