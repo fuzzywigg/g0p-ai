@@ -14,7 +14,7 @@ Approved public fable only. Source: [fuzzywigg.ai/aesop/the-ratchet-that-never-t
 2. Click once. Dots morph into the episode 0006 ratchet glyph.
 3. [Geryon] captions scroll underneath.
 
-No menus. No DNS cutover. Production alias: `https://g0p-ai.vercel.app` (not apex `g0p.ai`).
+No menus. No DNS cutover. Production alias: `https://g0p-ai.vercel.app` (not apex `g0p.ai`). Live twin while name settles: `https://g0p-aesop.vercel.app`.
 
 ## Local
 
