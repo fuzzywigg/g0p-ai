@@ -2,7 +2,7 @@
 
 Aesop ASCII theater. One episode on the field: click once, Geryon the crab morphs through a **fixed Aesop phase map**, captions run, the browser speaks.
 
-Every fable uses the same seven parts — Hook, The Room, The Itch, The Turn, The Craft, The Moral, The Encore. Templates are shared (spotlight, set, race-through, curtain bow); only the imagery is unique. See [PHASES.md](PHASES.md).
+Every fable uses the same seven parts — Hook, The Room, The Itch, The Turn, The Craft, The Moral, The Encore. Templates are shared (`spotlight`, `set`, `unease`, `breakthrough`, `scar`, `lesson`, `curtain`); only the imagery is unique. See [PHASES.md](PHASES.md).
 
 ## Now playing
 
