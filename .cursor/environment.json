@@ -1,0 +1,4 @@
+{
+  "name": "g0p-ai",
+  "install": "npm test"
+}
