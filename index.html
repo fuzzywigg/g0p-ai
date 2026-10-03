@@ -730,9 +730,40 @@ phase: encore
     return starts;
   }
 
+  function normalizePhaseAt(value) {
+    if (!value || typeof value !== "object" || Array.isArray(value)) return null;
+    var out = {};
+    var keys = Object.keys(value);
+    var i, id, n;
+    for (i = 0; i < keys.length; i++) {
+      id = String(keys[i]).trim();
+      if (!/^[a-z][a-z0-9-]{0,31}$/.test(id)) continue;
+      n = Number(value[keys[i]]);
+      if (!Number.isFinite(n) || n < 0) continue;
+      out[id] = n;
+    }
+    return Object.keys(out).length ? out : null;
+  }
+
+  function normalizeLeadCaptions(value) {
+    var n = Number(value);
+    if (!Number.isInteger(n) || n < 0 || n > 32) return 0;
+    return n;
+  }
+
+  function normalizeTitle(value) {
+    if (typeof value !== "string") return "";
+    var trimmed = value.trim();
+    if (!trimmed || trimmed.length > 200) return "";
+    return trimmed;
+  }
+
   function normalizeAudioEntry(id, value) {
     var src = null;
     var cues = null;
+    var phaseAt = null;
+    var leadCaptions = 0;
+    var title = "";
     var raw, trimmed;
     if (value === true) {
       src = conventionAudioPath(id);
@@ -749,9 +780,19 @@ phase: encore
         return null;
       }
       cues = normalizeCues(value.cues);
+      phaseAt = normalizePhaseAt(value.phaseAt);
+      leadCaptions = normalizeLeadCaptions(value.leadCaptions);
+      title = normalizeTitle(value.title);
     }
     if (!src) return null;
-    return { id: id, src: src, cues: cues };
+    return {
+      id: id,
+      src: src,
+      cues: cues,
+      phaseAt: phaseAt,
+      leadCaptions: leadCaptions,
+      title: title
+    };
   }
 
   function parseAudioManifest(input) {
@@ -794,6 +835,74 @@ phase: encore
   function captionWordWeight(text) {
     var words = String(text || "").trim().split(/\s+/).filter(Boolean);
     return Math.max(1, words.length);
+  }
+
+  function weightedStarts(captions, from, to) {
+    var weights = [];
+    var total = 0;
+    var span, cursor, i, weight, starts;
+    for (i = 0; i < captions.length; i++) {
+      weight = captionWordWeight(captions[i]);
+      weights.push(weight);
+      total += weight;
+    }
+    span = Math.max(0, to - from);
+    cursor = from;
+    starts = [];
+    for (i = 0; i < weights.length; i++) {
+      starts.push(cursor);
+      cursor += (weights[i] / total) * span;
+    }
+    return starts;
+  }
+
+  function expandNarrationCues(segments, options) {
+    var groups = Array.isArray(segments) ? segments : [];
+    var opts = options || {};
+    var lead = [];
+    var spoken = [];
+    var seenSpoken = false;
+    var i, group, captions, at, hasAt, duration, hasDuration, cues, leadUntil, from, nextAt, caps;
+    if (!groups.length) return null;
+    for (i = 0; i < groups.length; i++) {
+      group = groups[i];
+      captions = group && Array.isArray(group.captions) ? group.captions : null;
+      if (!captions) return null;
+      at = group.at;
+      hasAt = at != null && Number.isFinite(Number(at)) && Number(at) >= 0;
+      if (!hasAt) {
+        if (seenSpoken) return null;
+        lead = lead.concat(captions);
+        continue;
+      }
+      seenSpoken = true;
+      spoken.push({ captions: captions, at: Number(at) });
+    }
+    if (!spoken.length) return null;
+    for (i = 1; i < spoken.length; i++) {
+      if (spoken[i].at < spoken[i - 1].at) return null;
+    }
+    duration = Number(opts.duration);
+    hasDuration = Number.isFinite(duration) && duration > 0;
+    cues = [];
+    leadUntil = spoken[0].at;
+    if (lead.length) {
+      cues.push(0);
+      for (i = 1; i < lead.length; i++) cues.push(leadUntil);
+    }
+    for (i = 0; i < spoken.length; i++) {
+      from = spoken[i].at;
+      nextAt = i + 1 < spoken.length ? spoken[i + 1].at : hasDuration ? Math.max(duration, from) : null;
+      caps = spoken[i].captions;
+      if (!caps.length) continue;
+      if (nextAt == null) {
+        if (caps.length > 1) return null;
+        cues.push(from);
+        continue;
+      }
+      cues = cues.concat(weightedStarts(caps, from, nextAt));
+    }
+    return cues.length ? cues : null;
   }
 
   function buildCaptionBeats(captions, options) {
@@ -1643,13 +1752,44 @@ phase: encore
     } catch (err) {}
   }
 
+  function narrationSegments(entry) {
+    var phaseAt = entry && entry.phaseAt;
+    var scenes = episode.scenes || [];
+    var segments = [];
+    var i, scene, at, segment;
+    if (!phaseAt) return null;
+    for (i = 0; i < scenes.length; i++) {
+      scene = scenes[i];
+      segment = { captions: scene.captions };
+      at = phaseAt[scene.phase];
+      if (at != null && Number.isFinite(Number(at))) segment.at = Number(at);
+      segments.push(segment);
+    }
+    return segments;
+  }
+
+  function cuesForNarration(entry, duration) {
+    var segments = narrationSegments(entry);
+    var expanded = segments ? expandNarrationCues(segments, { duration: duration }) : null;
+    if (expanded && expanded.length === episode.captions.length) return expanded;
+    if (entry && Array.isArray(entry.cues)) return entry.cues;
+    return null;
+  }
+
+  function audioCaptionText(index) {
+    var entry = audioSession && audioSession.entry;
+    var lead = entry ? Number(entry.leadCaptions) : 0;
+    if (entry && lead > 0 && index < lead && entry.title) return entry.title;
+    return episode.captions[index];
+  }
+
   function presentAudioCaption(index, flash) {
     var lines = episode.captions;
     if (index < 0 || index >= lines.length) return;
     captionIndex = index;
     document.documentElement.dataset.caption = String(index);
     syncScene(index);
-    captionsEl.textContent = lines[index];
+    captionsEl.textContent = audioCaptionText(index);
     captionsEl.classList.remove("out");
     captionsEl.classList.add("in");
     if (flash) triggerDreamFlash("speak-start");
@@ -1661,7 +1801,7 @@ phase: encore
     if (!audioSession.beats.length) {
       audioSession.beats = buildCaptionBeats(episode.captions, {
         duration: duration,
-        cues: audioSession.entry.cues
+        cues: cuesForNarration(audioSession.entry, duration)
       });
     }
     if (!audioSession.beats.length) return;
@@ -1697,7 +1837,7 @@ phase: encore
       closed: false,
       started: false,
       entry: entry,
-      beats: buildCaptionBeats(episode.captions, { cues: entry.cues }),
+      beats: buildCaptionBeats(episode.captions, { cues: cuesForNarration(entry) }),
       clock: -1
     };
     activeAudio = audio;
@@ -1707,7 +1847,7 @@ phase: encore
       if (!audioSession || audioSession.closed) return;
       audioSession.beats = buildCaptionBeats(episode.captions, {
         duration: audio.duration,
-        cues: entry.cues
+        cues: cuesForNarration(entry, audio.duration)
       });
       if (!audioSession.beats.length) failAudio(audioEventAction("error", audioSession.started));
     });

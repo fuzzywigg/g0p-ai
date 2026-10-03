@@ -5,7 +5,10 @@
  * Manifest maps an episode id to a URL. An empty, missing, or malformed
  * manifest authorizes no audio. Listing an episode as `true` (or as an
  * object without a src) uses the convention file audio/<id>.mp3.
- * No MP3 ships in the repo; files are matched separately.
+ *
+ * A recording may speak the title and then the later phases, skipping the
+ * hook lines. `leadCaptions` plus `phaseAt` place the title/hook caption on
+ * that spoken title and lock every later caption to the narration.
  */
 
 const EPISODE_ID = /^\d{4}$/;
@@ -47,9 +50,38 @@ function normalizeCues(cues) {
   return starts;
 }
 
+function normalizePhaseAt(value) {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return null;
+  const out = {};
+  for (const key of Object.keys(value)) {
+    const id = String(key).trim();
+    if (!/^[a-z][a-z0-9-]{0,31}$/.test(id)) continue;
+    const n = Number(value[key]);
+    if (!Number.isFinite(n) || n < 0) continue;
+    out[id] = n;
+  }
+  return Object.keys(out).length ? out : null;
+}
+
+function normalizeLeadCaptions(value) {
+  const n = Number(value);
+  if (!Number.isInteger(n) || n < 0 || n > 32) return 0;
+  return n;
+}
+
+function normalizeTitle(value) {
+  if (typeof value !== "string") return "";
+  const trimmed = value.trim();
+  if (!trimmed || trimmed.length > 200) return "";
+  return trimmed;
+}
+
 function normalizeAudioEntry(id, value) {
   let src = null;
   let cues = null;
+  let phaseAt = null;
+  let leadCaptions = 0;
+  let title = "";
   if (value === true) {
     src = conventionAudioPath(id);
   } else if (typeof value === "string") {
@@ -65,9 +97,12 @@ function normalizeAudioEntry(id, value) {
       return null;
     }
     cues = normalizeCues(value.cues);
+    phaseAt = normalizePhaseAt(value.phaseAt);
+    leadCaptions = normalizeLeadCaptions(value.leadCaptions);
+    title = normalizeTitle(value.title);
   }
   if (!src) return null;
-  return { id, src, cues };
+  return { id, src, cues, phaseAt, leadCaptions, title };
 }
 
 /** Bad, missing, or empty input yields an empty map (no audio). */
@@ -113,6 +148,73 @@ function captionWordWeight(text) {
     .split(/\s+/)
     .filter(Boolean);
   return Math.max(1, words.length);
+}
+
+function weightedStarts(captions, from, to) {
+  const weights = captions.map((line) => captionWordWeight(line));
+  const total = weights.reduce((sum, weight) => sum + weight, 0);
+  const span = Math.max(0, to - from);
+  let cursor = from;
+  return weights.map((weight) => {
+    const start = cursor;
+    cursor += (weight / total) * span;
+    return start;
+  });
+}
+
+/**
+ * Per-caption starts for a narration that speaks a title, then named phases.
+ * Segments without `at` are the unspoken hook and must be a prefix. The first
+ * of those stays on screen until the first spoken phase; the rest are stacked
+ * on that boundary so the clock does not pretend they were read aloud.
+ * Later segments split [at, nextAt] by word weight. The final segment needs
+ * `duration` when it has more than one caption.
+ */
+export function expandNarrationCues(segments, options = {}) {
+  const groups = Array.isArray(segments) ? segments : [];
+  if (!groups.length) return null;
+  const lead = [];
+  const spoken = [];
+  let seenSpoken = false;
+  for (const group of groups) {
+    const captions = Array.isArray(group?.captions) ? group.captions : null;
+    if (!captions) return null;
+    const at = group.at;
+    const hasAt = at != null && Number.isFinite(Number(at)) && Number(at) >= 0;
+    if (!hasAt) {
+      if (seenSpoken) return null;
+      lead.push(...captions);
+      continue;
+    }
+    seenSpoken = true;
+    spoken.push({ captions, at: Number(at) });
+  }
+  if (!spoken.length) return null;
+  for (let i = 1; i < spoken.length; i++) {
+    if (spoken[i].at < spoken[i - 1].at) return null;
+  }
+  const duration = Number(options.duration);
+  const hasDuration = Number.isFinite(duration) && duration > 0;
+  const cues = [];
+  const leadUntil = spoken[0].at;
+  if (lead.length) {
+    cues.push(0);
+    for (let i = 1; i < lead.length; i++) cues.push(leadUntil);
+  }
+  for (let i = 0; i < spoken.length; i++) {
+    const from = spoken[i].at;
+    const nextAt =
+      i + 1 < spoken.length ? spoken[i + 1].at : hasDuration ? Math.max(duration, from) : null;
+    const caps = spoken[i].captions;
+    if (!caps.length) continue;
+    if (nextAt == null) {
+      if (caps.length > 1) return null;
+      cues.push(from);
+      continue;
+    }
+    cues.push(...weightedStarts(caps, from, nextAt));
+  }
+  return cues.length ? cues : null;
 }
 
 /**
