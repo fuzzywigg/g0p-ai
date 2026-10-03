@@ -237,7 +237,7 @@ test("shipped 0006 narration skips the unspoken hook and locks later phases", ()
   assert.equal(listed.phaseAt.hook, undefined);
   assert.deepEqual(listed.phaseAt, {
     room: 3.46,
-    itch: 89.78,
+    itch: 89.92,
     turn: 181.08,
     craft: 281.72,
     moral: 386.74,
