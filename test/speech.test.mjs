@@ -90,5 +90,6 @@ test("player speaks each caption on the advance path and cancels on end", () => 
   assert.match(html, /pagehide/);
   assert.match(html, /google/i);
   assert.match(html, /en-GB/);
-  assert.doesNotMatch(html, /\.mp3/);
+  assert.match(html, /function playCaptions/);
+  assert.match(html, /narrationSource\(audioManifest, episode\.episode\)/);
 });
