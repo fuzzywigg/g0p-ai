@@ -869,6 +869,300 @@ import { createGlyphStage } from "./js/glyph-stage.mjs";
     return Math.min(90000, Math.max(4000, words * 520 + 2500));
   }
 
+  // keep in sync with js/audio.mjs
+  function conventionAudioPath(episodeId) {
+    var id = String(episodeId == null ? "" : episodeId).trim();
+    if (!/^\d{4}$/.test(id)) return null;
+    return "audio/" + id + ".mp3";
+  }
+
+  function isSafeAudioUrl(src) {
+    if (typeof src !== "string") return false;
+    var trimmed = src.trim();
+    if (!trimmed || trimmed.length > 2000) return false;
+    if (trimmed.indexOf("..") !== -1 || trimmed.indexOf("\\") !== -1) return false;
+    if (/[\u0000-\u001f\s]/.test(trimmed)) return false;
+    if (/^[a-z][a-z0-9+.-]*:/i.test(trimmed)) {
+      try {
+        var url = new URL(trimmed);
+        return url.protocol === "http:" || url.protocol === "https:";
+      } catch (err) {
+        return false;
+      }
+    }
+    if (trimmed.charAt(0) === "/") return false;
+    var path = trimmed.split("#")[0].split("?")[0];
+    return /^[A-Za-z0-9_./~%-]+$/.test(path);
+  }
+
+  function normalizeCues(cues) {
+    if (!Array.isArray(cues) || cues.length === 0) return null;
+    var starts = [];
+    var i, n;
+    for (i = 0; i < cues.length; i++) {
+      n = Number(cues[i]);
+      if (!Number.isFinite(n) || n < 0) return null;
+      if (i > 0 && n < starts[i - 1]) return null;
+      starts.push(n);
+    }
+    return starts;
+  }
+
+  function normalizePhaseAt(value) {
+    if (!value || typeof value !== "object" || Array.isArray(value)) return null;
+    var out = {};
+    var keys = Object.keys(value);
+    var i, id, n;
+    for (i = 0; i < keys.length; i++) {
+      id = String(keys[i]).trim();
+      if (!/^[a-z][a-z0-9-]{0,31}$/.test(id)) continue;
+      n = Number(value[keys[i]]);
+      if (!Number.isFinite(n) || n < 0) continue;
+      out[id] = n;
+    }
+    return Object.keys(out).length ? out : null;
+  }
+
+  function normalizeLeadCaptions(value) {
+    var n = Number(value);
+    if (!Number.isInteger(n) || n < 0 || n > 32) return 0;
+    return n;
+  }
+
+  function normalizeTitle(value) {
+    if (typeof value !== "string") return "";
+    var trimmed = value.trim();
+    if (!trimmed || trimmed.length > 200) return "";
+    return trimmed;
+  }
+
+  function normalizeAudioEntry(id, value) {
+    var src = null;
+    var cues = null;
+    var phaseAt = null;
+    var leadCaptions = 0;
+    var title = "";
+    var raw, trimmed;
+    if (value === true) {
+      src = conventionAudioPath(id);
+    } else if (typeof value === "string") {
+      trimmed = value.trim();
+      if (isSafeAudioUrl(trimmed)) src = trimmed;
+    } else if (value && typeof value === "object" && !Array.isArray(value)) {
+      raw = value.src != null ? value.src : value.url;
+      if (raw == null || raw === "") {
+        src = conventionAudioPath(id);
+      } else if (typeof raw === "string" && isSafeAudioUrl(raw.trim())) {
+        src = raw.trim();
+      } else {
+        return null;
+      }
+      cues = normalizeCues(value.cues);
+      phaseAt = normalizePhaseAt(value.phaseAt);
+      leadCaptions = normalizeLeadCaptions(value.leadCaptions);
+      title = normalizeTitle(value.title);
+    }
+    if (!src) return null;
+    return {
+      id: id,
+      src: src,
+      cues: cues,
+      phaseAt: phaseAt,
+      leadCaptions: leadCaptions,
+      title: title
+    };
+  }
+
+  function parseAudioManifest(input) {
+    var data = input;
+    var trimmed, out, keys, i, id, entry;
+    if (input == null) return {};
+    if (typeof input === "string") {
+      trimmed = input.replace(/^\uFEFF/, "").trim();
+      if (!trimmed) return {};
+      try {
+        data = JSON.parse(trimmed);
+      } catch (err) {
+        return {};
+      }
+    }
+    if (!data || typeof data !== "object" || Array.isArray(data)) return {};
+    out = {};
+    keys = Object.keys(data);
+    for (i = 0; i < keys.length; i++) {
+      id = String(keys[i]).trim();
+      if (!/^\d{4}$/.test(id)) continue;
+      entry = normalizeAudioEntry(id, data[keys[i]]);
+      if (entry) out[id] = entry;
+    }
+    return out;
+  }
+
+  function audioEntryForEpisode(manifest, episodeId) {
+    var parsed = parseAudioManifest(manifest);
+    var id = String(episodeId == null ? "" : episodeId).trim();
+    var entry = parsed[id];
+    if (!entry || typeof entry.src !== "string" || !entry.src) return null;
+    return entry;
+  }
+
+  function narrationSource(manifest, episodeId) {
+    return audioEntryForEpisode(manifest, episodeId) ? "audio" : "speech";
+  }
+
+  function captionWordWeight(text) {
+    var words = String(text || "").trim().split(/\s+/).filter(Boolean);
+    return Math.max(1, words.length);
+  }
+
+  function weightedStarts(captions, from, to) {
+    var weights = [];
+    var total = 0;
+    var span, cursor, i, weight, starts;
+    for (i = 0; i < captions.length; i++) {
+      weight = captionWordWeight(captions[i]);
+      weights.push(weight);
+      total += weight;
+    }
+    span = Math.max(0, to - from);
+    cursor = from;
+    starts = [];
+    for (i = 0; i < weights.length; i++) {
+      starts.push(cursor);
+      cursor += (weights[i] / total) * span;
+    }
+    return starts;
+  }
+
+  function expandNarrationCues(segments, options) {
+    var groups = Array.isArray(segments) ? segments : [];
+    var opts = options || {};
+    var lead = [];
+    var spoken = [];
+    var seenSpoken = false;
+    var i, group, captions, at, hasAt, duration, hasDuration, cues, leadUntil, from, nextAt, caps;
+    if (!groups.length) return null;
+    for (i = 0; i < groups.length; i++) {
+      group = groups[i];
+      captions = group && Array.isArray(group.captions) ? group.captions : null;
+      if (!captions) return null;
+      at = group.at;
+      hasAt = at != null && Number.isFinite(Number(at)) && Number(at) >= 0;
+      if (!hasAt) {
+        if (seenSpoken) return null;
+        lead = lead.concat(captions);
+        continue;
+      }
+      seenSpoken = true;
+      spoken.push({ captions: captions, at: Number(at) });
+    }
+    if (!spoken.length) return null;
+    for (i = 1; i < spoken.length; i++) {
+      if (spoken[i].at < spoken[i - 1].at) return null;
+    }
+    duration = Number(opts.duration);
+    hasDuration = Number.isFinite(duration) && duration > 0;
+    cues = [];
+    leadUntil = spoken[0].at;
+    if (lead.length) {
+      cues.push(0);
+      for (i = 1; i < lead.length; i++) cues.push(leadUntil);
+    }
+    for (i = 0; i < spoken.length; i++) {
+      from = spoken[i].at;
+      nextAt = i + 1 < spoken.length ? spoken[i + 1].at : hasDuration ? Math.max(duration, from) : null;
+      caps = spoken[i].captions;
+      if (!caps.length) continue;
+      if (nextAt == null) {
+        if (caps.length > 1) return null;
+        cues.push(from);
+        continue;
+      }
+      cues = cues.concat(weightedStarts(caps, from, nextAt));
+    }
+    return cues.length ? cues : null;
+  }
+
+  function buildCaptionBeats(captions, options) {
+    var lines = Array.isArray(captions) ? captions : [];
+    var opts = options || {};
+    var n = lines.length;
+    var duration, hasDuration, cues, beats, i, start, next, weights, total, cursor, span;
+    if (!n) return [];
+    duration = Number(opts.duration);
+    hasDuration = Number.isFinite(duration) && duration > 0;
+    cues = normalizeCues(opts.cues);
+    if (cues && cues.length !== n) cues = null;
+    if (cues) {
+      beats = [];
+      for (i = 0; i < n; i++) {
+        start = cues[i];
+        next = i + 1 < n ? cues[i + 1] : hasDuration ? Math.max(duration, start) : start;
+        beats.push({ index: i, start: start, end: Math.max(start, next) });
+      }
+      return beats;
+    }
+    if (!hasDuration) return [];
+    weights = [];
+    total = 0;
+    for (i = 0; i < n; i++) {
+      weights.push(captionWordWeight(lines[i]));
+      total += weights[i];
+    }
+    cursor = 0;
+    beats = [];
+    for (i = 0; i < n; i++) {
+      span = (weights[i] / total) * duration;
+      beats.push({ index: i, start: cursor, end: cursor + span });
+      cursor += span;
+    }
+    return beats;
+  }
+
+  function beatIndexAtTime(beats, currentTime) {
+    if (!Array.isArray(beats) || beats.length === 0) return -1;
+    var t = Number(currentTime);
+    var found, i;
+    if (!Number.isFinite(t)) return -1;
+    if (t < beats[0].start) return -1;
+    found = beats[0].index;
+    for (i = 0; i < beats.length; i++) {
+      if (t >= beats[i].start) found = beats[i].index;
+      else break;
+    }
+    return found;
+  }
+
+  function dreamBeatsAtTime(opts) {
+    opts = opts || {};
+    var captionIndexAt = beatIndexAtTime(opts.beats, opts.time);
+    var previousIndex = beatIndexAtTime(opts.beats, opts.previousTime == null ? -1 : opts.previousTime);
+    var crossed = captionIndexAt >= 0 && captionIndexAt !== previousIndex;
+    return {
+      captionIndex: captionIndexAt,
+      previousIndex: previousIndex,
+      flash: Boolean(crossed && !opts.reduceMotion)
+    };
+  }
+
+  function audioEventAction(event, hasStarted) {
+    switch (event) {
+      case "pause":
+        return "pause";
+      case "ended":
+        return "end";
+      case "error":
+        return hasStarted ? "end" : "speech";
+      case "timeupdate":
+        return "tick";
+      default: {
+        var _exhaustive = event;
+        void _exhaustive;
+        return "ignore";
+      }
+    }
+  }
+
   var currentUtterance = null;
   var speechTimer = 0;
 
@@ -1705,6 +1999,229 @@ import { createGlyphStage } from "./js/glyph-stage.mjs";
     });
   }
 
+  var audioManifest = {};
+  var audioManifestReady = false;
+  var audioManifestPromise = Promise.resolve({});
+  var activeAudio = null;
+  var audioSession = null;
+  var narrationBegun = false;
+
+  function loadAudioManifest() {
+    if (typeof fetch !== "function") return Promise.resolve({});
+    return fetch("audio/manifest.json")
+      .then(function (res) {
+        if (!res || !res.ok) return {};
+        return res.json().catch(function () {
+          return {};
+        });
+      })
+      .then(function (data) {
+        return parseAudioManifest(data);
+      })
+      .catch(function () {
+        return {};
+      });
+  }
+
+  function stopAudio() {
+    if (audioSession) audioSession.closed = true;
+    var audio = activeAudio;
+    activeAudio = null;
+    if (!audio) return;
+    try {
+      audio.pause();
+    } catch (err) {}
+    audio.removeAttribute("src");
+    try {
+      audio.load();
+    } catch (err) {}
+  }
+
+  function narrationSegments(entry) {
+    var phaseAt = entry && entry.phaseAt;
+    var scenes = episode.scenes || [];
+    var segments = [];
+    var i, scene, at, segment;
+    if (!phaseAt) return null;
+    for (i = 0; i < scenes.length; i++) {
+      scene = scenes[i];
+      segment = { captions: scene.captions };
+      at = phaseAt[scene.phase];
+      if (at != null && Number.isFinite(Number(at))) segment.at = Number(at);
+      segments.push(segment);
+    }
+    return segments;
+  }
+
+  function cuesForNarration(entry, duration) {
+    var segments = narrationSegments(entry);
+    var expanded = segments ? expandNarrationCues(segments, { duration: duration }) : null;
+    if (expanded && expanded.length === episode.captions.length) return expanded;
+    if (entry && Array.isArray(entry.cues)) return entry.cues;
+    return null;
+  }
+
+  function audioCaptionText(index) {
+    var entry = audioSession && audioSession.entry;
+    var lead = entry ? Number(entry.leadCaptions) : 0;
+    if (entry && lead > 0 && index < lead && entry.title) return entry.title;
+    return episode.captions[index];
+  }
+
+  function presentAudioCaption(index, flash) {
+    var lines = episode.captions;
+    if (index < 0 || index >= lines.length) return;
+    captionIndex = index;
+    document.documentElement.dataset.caption = String(index);
+    syncScene(index);
+    captionsEl.textContent = audioCaptionText(index);
+    captionsEl.classList.remove("out");
+    captionsEl.classList.add("in");
+    if (flash) triggerDreamFlash("speak-start");
+  }
+
+  function syncAudioClock(time, duration) {
+    var clock, target, i;
+    if (!audioSession || audioSession.closed) return;
+    if (!audioSession.beats.length) {
+      audioSession.beats = buildCaptionBeats(episode.captions, {
+        duration: duration,
+        cues: cuesForNarration(audioSession.entry, duration)
+      });
+    }
+    if (!audioSession.beats.length) return;
+    clock = dreamBeatsAtTime({
+      beats: audioSession.beats,
+      time: time,
+      previousTime: audioSession.clock,
+      reduceMotion: reduceMotion
+    });
+    audioSession.clock = time;
+    target = clock.captionIndex;
+    if (target < 0 || target === captionIndex) return;
+    if (target > captionIndex) {
+      for (i = captionIndex + 1; i <= target; i++) {
+        presentAudioCaption(i, Boolean(clock.flash) && i === target);
+      }
+      return;
+    }
+    presentAudioCaption(target, Boolean(clock.flash));
+  }
+
+  function failAudio(action) {
+    if (!audioSession || audioSession.closed) return;
+    stopAudio();
+    delete document.documentElement.dataset.audio;
+    if (action === "speech") playCaptions();
+    else document.documentElement.dataset.state = "done";
+  }
+
+  function applyNarrationMute() {
+    if (activeAudio) activeAudio.muted = muted;
+  }
+
+  function playAudioNarration(entry) {
+    var audio = new Audio();
+    audioSession = {
+      closed: false,
+      started: false,
+      entry: entry,
+      beats: buildCaptionBeats(episode.captions, { cues: cuesForNarration(entry) }),
+      clock: -1
+    };
+    activeAudio = audio;
+    audio.muted = muted;
+    audio.preload = "auto";
+
+    audio.addEventListener("loadedmetadata", function () {
+      if (!audioSession || audioSession.closed) return;
+      audioSession.beats = buildCaptionBeats(episode.captions, {
+        duration: audio.duration,
+        cues: cuesForNarration(entry, audio.duration)
+      });
+      if (!audioSession.beats.length) failAudio(audioEventAction("error", audioSession.started));
+    });
+
+    audio.addEventListener("play", function () {
+      if (!audioSession || audioSession.closed) return;
+      document.documentElement.dataset.audio = "playing";
+    });
+
+    audio.addEventListener("playing", function () {
+      if (!audioSession || audioSession.closed) return;
+      audioSession.started = true;
+      document.documentElement.dataset.audio = "playing";
+      syncAudioClock(audio.currentTime, audio.duration);
+    });
+
+    audio.addEventListener("timeupdate", function () {
+      if (!audioSession || audioSession.closed || audio.paused || audio.ended) return;
+      if (audioEventAction("timeupdate", audioSession.started) !== "tick") return;
+      audioSession.started = true;
+      syncAudioClock(audio.currentTime, audio.duration);
+    });
+
+    audio.addEventListener("pause", function () {
+      if (!audioSession || audioSession.closed || audio.ended) return;
+      if (audioEventAction("pause", audioSession.started) !== "pause") return;
+      document.documentElement.dataset.audio = "paused";
+    });
+
+    audio.addEventListener("ended", function () {
+      var endTime;
+      if (!audioSession || audioSession.closed) return;
+      if (audioEventAction("ended", audioSession.started) !== "end") return;
+      endTime = Number.isFinite(audio.duration) ? audio.duration : audio.currentTime;
+      syncAudioClock(endTime, audio.duration);
+      document.documentElement.dataset.audio = "ended";
+      stopAudio();
+      document.documentElement.dataset.state = "done";
+    });
+
+    audio.addEventListener("error", function () {
+      if (!audioSession || audioSession.closed) return;
+      failAudio(audioEventAction("error", audioSession.started));
+    });
+
+    audio.src = entry.src;
+    try {
+      var pending = audio.play();
+      if (pending && typeof pending.catch === "function") {
+        pending.catch(function () {
+          if (!audioSession || audioSession.closed) return;
+          failAudio(audioEventAction("error", audioSession.started));
+        });
+      }
+    } catch (err) {
+      failAudio(audioEventAction("error", false));
+    }
+  }
+
+  function beginNarration() {
+    var source, entry;
+    if (narrationBegun) return;
+    narrationBegun = true;
+    source = narrationSource(audioManifest, episode.episode);
+    switch (source) {
+      case "audio":
+        entry = audioEntryForEpisode(audioManifest, episode.episode);
+        if (entry) {
+          playAudioNarration(entry);
+          return;
+        }
+        playCaptions();
+        return;
+      case "speech":
+        playCaptions();
+        return;
+      default: {
+        var _exhaustive = source;
+        void _exhaustive;
+        playCaptions();
+      }
+    }
+  }
+
   async function playCaptions() {
     var lines = episode.captions;
     var i;
@@ -1757,7 +2274,15 @@ import { createGlyphStage } from "./js/glyph-stage.mjs";
     if (window.speechSynthesis && typeof window.speechSynthesis.getVoices === "function") {
       window.speechSynthesis.getVoices();
     }
-    playCaptions();
+    if (audioManifestReady) {
+      beginNarration();
+      return;
+    }
+    audioManifestPromise.then(function () {
+      if (!playing) return;
+      if (document.documentElement.dataset.state !== "playing") return;
+      beginNarration();
+    });
   }
 
   window.addEventListener("resize", function () {
@@ -1774,7 +2299,12 @@ import { createGlyphStage } from "./js/glyph-stage.mjs";
 
   document.addEventListener("click", onActivate);
   document.addEventListener("keydown", onActivate);
-  window.addEventListener("pagehide", cancelSpeech);
+  function stopPlayback() {
+    cancelSpeech();
+    stopAudio();
+  }
+
+  window.addEventListener("pagehide", stopPlayback);
   canvas.setAttribute("tabindex", "0");
   stageUi.addEventListener("click", function (e) { e.stopPropagation(); });
   stageUi.addEventListener("keydown", function (e) { e.stopPropagation(); });
@@ -1788,6 +2318,7 @@ import { createGlyphStage } from "./js/glyph-stage.mjs";
       ? window.speechSynthesis.getVoices()
       : []);
     if (muted) cancelSpeech();
+    applyNarrationMute();
   });
 
   voicePicker.addEventListener("change", function (e) {
@@ -1801,6 +2332,12 @@ import { createGlyphStage } from "./js/glyph-stage.mjs";
   });
   syncMuteButton();
   renderCatalog();
+
+  audioManifestPromise = loadAudioManifest().then(function (parsed) {
+    audioManifest = parsed;
+    audioManifestReady = true;
+    return parsed;
+  });
 
   resize();
   spawnParticles();

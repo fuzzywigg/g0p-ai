@@ -189,6 +189,8 @@ test("player speaks each caption on the advance path and cancels on end", () => 
   assert.match(html, /pagehide/);
   assert.match(html, /google/i);
   assert.match(html, /en-GB/);
+  assert.match(html, /function playCaptions/);
+  assert.match(html, /narrationSource\(audioManifest, episode\.episode\)/);
   assert.match(html, /localStorage/);
   assert.match(html, /g0p-ai-mute/);
   assert.match(html, /id="mute-toggle"/);
@@ -197,7 +199,18 @@ test("player speaks each caption on the advance path and cancels on end", () => 
   assert.match(html, /voiceschanged/);
   assert.match(html, /captionsEl\.textContent = lines\[i\]/);
   assert.match(html, /captions only/);
-  assert.doesNotMatch(html, /\.mp3/);
+  assert.match(html, /audio\.muted = muted/);
+  assert.match(html, /activeAudio\.muted = muted/);
+  assert.doesNotMatch(html, /audio\/0006\.mp3/);
   assert.doesNotMatch(html, /elevenlabs/i);
   assert.doesNotMatch(html, /openai.*tts/i);
+  const voiceHandler = html.slice(
+    html.indexOf("voicePicker.addEventListener"),
+    html.indexOf("attachVoicesChanged(window.speechSynthesis"),
+  );
+  assert.match(voiceHandler, /selectedVoiceURI/);
+  assert.doesNotMatch(voiceHandler, /activeAudio/);
+  assert.doesNotMatch(voiceHandler, /\.muted/);
+  const speak = html.slice(html.indexOf("function speakCaption"), html.indexOf("function stopAudio"));
+  assert.match(speak, /pickVoice\(/);
 });
