@@ -1,5 +1,20 @@
 {
   "version": 2,
-  "builds": [{ "src": "index.html", "use": "@vercel/static" }],
-  "routes": [{ "src": "/(.*)", "dest": "/index.html" }]
+  "builds": [
+    { "src": "index.html", "use": "@vercel/static" },
+    { "src": "audio/*", "use": "@vercel/static" }
+  ],
+  "routes": [
+    {
+      "src": "/audio/(.+\\.mp3)",
+      "headers": { "Content-Type": "audio/mpeg" },
+      "dest": "/audio/$1"
+    },
+    {
+      "src": "/audio/(.+\\.json)",
+      "headers": { "Content-Type": "application/json" },
+      "dest": "/audio/$1"
+    },
+    { "src": "/(.*)", "dest": "/index.html" }
+  ]
 }
