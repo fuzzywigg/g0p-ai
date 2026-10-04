@@ -12,14 +12,12 @@ Hub-approved public bank only. Episode **0005** is never listed.
 
 ## Watch
 
-1. Open the page. A cool monospace sea drifts (braille specks, kelp, bubbles). A thin episode list (approved public entries only) sits top-left.
-2. Click once. Geryon assembles as real ASCII: a shaded crab sampled from a shape (carapace, claws, legs, eye stalks) into a character grid. Edge cells pick line glyphs; the body picks a brightness ramp. He moves through the shared phase templates. The Turn is a race-car smash-through; the Encore is a curtain bow to an audience of crabs.
-3. Color matures with the phase. Hook is near-monochrome and cool; room, itch, and turn add warmth, contrast, and a hue; craft hatches the shell; moral deepens the palette; encore is full color with a glow. The ink is on the characters.
-4. Captions show the spoken text under the field. The browser speaks each line in sync (free Web Speech API only — no paid TTS). Mute is remembered in `localStorage`; pick a voice when `speechSynthesis.getVoices` reports any (including after `voiceschanged`). If speech is muted or unavailable, captions still play.
+1. Open the page. The stage is one monospace point grid: sea, kelp, sand, and glyph-food share it with the crab. A thin episode list (approved public entries only) sits top-left. A small HUD counts unlocked glyphs and bruise hues.
+2. Click once. If `audio/manifest.json` lists this episode, narration plays from that file and captions lock to its cues. Web Speech is the fallback when the manifest has no entry, audio fails, or the listener is muted. Mute is remembered in `localStorage`. The voice picker still applies to the speech fallback.
+3. Geryon starts small and nearly gray, built from `.` `:` `o`. He scuttles, eats drifting glyphs (each meal joins his shell), and picks up bruise colors when the world bumps him. The itch lodges a sand grain; he hardens a pearl around it. Craft and the moral are the molt: a larger shell, deeper water, richer feeding. The encore shades him with all 95 printable ASCII characters and the full bruise palette.
+4. Scene changes flow on that same grid (cells drift and reform). Captions sit in a short band along the bottom. Speech and narration beats clap his claws. `prefers-reduced-motion` freezes the scuttle and the flow; the diet and the colors still advance with the phase. Never photos.
 
-Speech beats still schedule the short dream-flash (utterance start, morph peak, Turn smash). On screen that beat is a claw click and glyph sparks, not a burst of dots. `prefers-reduced-motion` freezes the pose and skips the sparks; the palette still matures with the phase. Never photos.
-
-Hold a phase for a still: `?phase=hook&still=1&progress=0.2` (also `room`, `itch`, `turn`, `craft`, `moral`, `encore`).
+Hold a phase for a still: `?phase=hook&still=1&progress=0.2` (also `room`, `itch`, `turn`, `craft`, `moral`, `encore`). `?tour=1` walks the growth arc.
 
 Apex `https://g0p.ai` already serves this theater (same body as the Vercel aliases). Aliases: `https://g0p-ai.vercel.app` · `https://g0p-aesop.vercel.app`. Formal DNS ownership remains a CoS/HITL note — see [CANON.md](CANON.md).
 

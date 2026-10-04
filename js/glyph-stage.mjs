@@ -4,7 +4,7 @@
  * short dream-flash while the picture itself is characters.
  */
 
-import { CELL_ASPECT, gridForViewport, renderGlyphField } from "./crab-field.mjs";
+import { CELL_ASPECT, flowFields, gridForViewport, renderGlyphField } from "./crab-field.mjs";
 import { clamp01 } from "./glyph-ramp.mjs";
 import { rgbCss } from "./phase-color.mjs";
 
@@ -29,7 +29,7 @@ export function paintGlyphField(ctx, field, width, height) {
   const ch = height / rows;
   ctx.fillStyle = rgbCss(field.palette.sea);
   ctx.fillRect(0, 0, width, height);
-  ctx.font = `${Math.max(8, Math.floor(ch * 0.92))}px ${FONT}`;
+  ctx.font = `${Math.max(11, Math.floor(ch * 1.02))}px ${FONT}`;
   ctx.textAlign = "center";
   ctx.textBaseline = "middle";
 
@@ -72,6 +72,9 @@ export function createGlyphStage(canvas, ctx) {
   let cols = 96;
   let rows = 40;
   let aspect = CELL_ASPECT;
+  let settled = null;
+  let from = null;
+  let prevMorph = 1;
   return {
     grid() {
       return { cols, rows, aspect };
@@ -83,6 +86,8 @@ export function createGlyphStage(canvas, ctx) {
       const cw = width / Math.max(cols, 1);
       const ch = height / Math.max(rows, 1);
       aspect = ch > 0 ? cw / ch : CELL_ASPECT;
+      settled = null;
+      from = null;
     },
     render(state) {
       const field = renderGlyphField({
@@ -91,8 +96,13 @@ export function createGlyphStage(canvas, ctx) {
         rows,
         aspect,
       });
-      paintGlyphField(ctx, field, state.width, state.height);
-      return field;
+      const morph = state.reduceMotion ? 1 : state.morphT == null ? 1 : state.morphT;
+      if (morph < prevMorph - 0.08) from = settled;
+      prevMorph = morph;
+      const shown = flowFields(from, field, morph, Boolean(state.reduceMotion));
+      paintGlyphField(ctx, shown, state.width, state.height);
+      if (morph >= 0.999) settled = field;
+      return shown;
     },
   };
 }

@@ -73,19 +73,21 @@
       bottom: 0;
       z-index: 3;
       pointer-events: none;
-      padding: 0 1.25rem calc(7vh + env(safe-area-inset-bottom));
-      background: linear-gradient(to top, rgba(0,0,0,0.92) 0%, rgba(0,0,0,0.55) 55%, rgba(0,0,0,0) 100%);
+      max-height: 16vh;
+      padding: 0.35rem 1.25rem calc(0.45rem + env(safe-area-inset-bottom));
+      background: linear-gradient(to top, rgba(0,0,0,0.92) 0%, rgba(0,0,0,0.8) 70%, rgba(0,0,0,0) 100%);
     }
     #captions {
       margin: 0 auto;
       max-width: 42rem;
-      min-height: 4.6em;
+      min-height: 2.6em;
       text-align: center;
-      font-size: clamp(0.92rem, 2.15vw, 1.14rem);
-      line-height: 1.45;
+      font-size: clamp(0.84rem, 1.7vw, 1.02rem);
+      line-height: 1.4;
       color: var(--caption);
+      text-shadow: 0 1px 0 #000;
       opacity: 0;
-      transform: translateY(0.8rem);
+      transform: translateY(0.4rem);
       transition: opacity 0.4s ease, transform 0.45s ease;
     }
     #captions.in {
@@ -1629,7 +1631,18 @@ import { createGlyphStage } from "./js/glyph-stage.mjs";
   var flourishMs = 460;
   var previewParams = new URLSearchParams(window.location.search);
   var previewStill = previewParams.get("still") === "1";
+  var previewTour = previewParams.get("tour") === "1";
+  var tourStarted = 0;
   var previewFlourish = previewParams.get("flourish") === "1" ? 0.85 : 0;
+  var TOUR = [
+    { id: "hook", template: "spotlight", pose: "proud", frame: 0 },
+    { id: "room", template: "set", pose: "inspect", frame: 0 },
+    { id: "itch", template: "unease", pose: "uneasy", frame: 0 },
+    { id: "turn", template: "breakthrough", pose: "snap", frame: 1 },
+    { id: "craft", template: "scar", pose: "scar", frame: 0 },
+    { id: "moral", template: "lesson", pose: "pray", frame: 0 },
+    { id: "encore", template: "curtain", pose: "enter", frame: 0 }
+  ];
 
   function syncMuteButton() {
     muteToggle.setAttribute("aria-pressed", muted ? "true" : "false");
@@ -1899,7 +1912,43 @@ import { createGlyphStage } from "./js/glyph-stage.mjs";
     return Math.max(0, Math.min(1, left / flourishMs));
   }
 
+  function audioPhaseProgress(phaseId) {
+    var phaseAt, t, marks, i, a, b, dur;
+    if (!activeAudio || !audioSession || audioSession.closed || !audioSession.entry) return null;
+    phaseAt = audioSession.entry.phaseAt;
+    if (!phaseAt) return null;
+    t = Number(audioSession.clock);
+    if (!isFinite(t) || t < 0) return null;
+    marks = [
+      { id: "hook", at: 0 },
+      { id: "room", at: Number(phaseAt.room) },
+      { id: "itch", at: Number(phaseAt.itch) },
+      { id: "turn", at: Number(phaseAt.turn) },
+      { id: "craft", at: Number(phaseAt.craft) },
+      { id: "moral", at: Number(phaseAt.moral) },
+      { id: "encore", at: Number(phaseAt.encore) }
+    ];
+    for (i = 0; i < marks.length; i++) {
+      if (!isFinite(marks[i].at)) return null;
+    }
+    for (i = 0; i < marks.length; i++) {
+      if (marks[i].id !== phaseId) continue;
+      a = marks[i].at;
+      if (i + 1 < marks.length) b = marks[i + 1].at;
+      else {
+        dur = Number(activeAudio.duration);
+        b = isFinite(dur) && dur > a ? dur : a + 1;
+      }
+      if (!(b > a)) return 0;
+      return Math.max(0, Math.min(1, (t - a) / (b - a)));
+    }
+    return null;
+  }
+
   function phaseProgressNow() {
+    var phase = phaseAt(currentScene < 0 ? 0 : currentScene);
+    var fromAudio = audioPhaseProgress(phase.id);
+    if (fromAudio != null) return fromAudio;
     if (captionIndex < 0 || !episode.scenes.length) return 0;
     var sceneIdx = sceneIndexForCaption(episode, captionIndex);
     var offset = 0;
@@ -1908,6 +1957,27 @@ import { createGlyphStage } from "./js/glyph-stage.mjs";
     var count = episode.scenes[sceneIdx].captions.length;
     if (count <= 1) return 0.35;
     return (captionIndex - offset) / (count - 1);
+  }
+
+  function tourNow(now) {
+    var span = 2400;
+    var u = tourStarted ? (now - tourStarted) / span : 0;
+    var idx, prog, beat, img, shot;
+    if (u < 0) u = 0;
+    idx = Math.floor(u) % TOUR.length;
+    prog = u - Math.floor(u);
+    beat = TOUR[idx];
+    img = FABLE_IMAGERY[beat.id] || {};
+    shot = beat.id === "turn" ? (img.breakthrough || img) : img;
+    return {
+      phaseId: beat.id,
+      template: beat.template,
+      pose: beat.id === "turn" ? (shot.pose || beat.pose) : beat.pose,
+      frame: beat.frame,
+      progress: prog,
+      morphT: prog < 0.22 ? prog / 0.22 : 1,
+      imagery: shot
+    };
   }
 
   function poseNow() {
@@ -1962,20 +2032,21 @@ import { createGlyphStage } from "./js/glyph-stage.mjs";
     var phase = phaseAt(currentScene < 0 ? 0 : currentScene);
     var tableau = tableauForPhase(currentScene < 0 ? 0 : currentScene, currentFrame < 0 ? 0 : currentFrame);
     var clock = previewStill ? 1680 : now;
+    var tour = previewTour ? tourNow(clock) : null;
     glyphStage.render({
       width: w,
       height: h,
-      playing: playing,
-      phaseId: playing ? phase.id : "hook",
-      progress: playing ? phaseProgressNow() : 0,
-      template: playing ? tableau.template || "" : "",
-      frame: playing ? (currentFrame < 0 ? 0 : currentFrame) : 0,
-      pose: playing ? poseNow() : "proud",
+      playing: playing || previewTour,
+      phaseId: tour ? tour.phaseId : (playing ? phase.id : "hook"),
+      progress: tour ? tour.progress : (playing ? phaseProgressNow() : 0),
+      template: tour ? tour.template : (playing ? tableau.template || "" : ""),
+      frame: tour ? tour.frame : (playing ? (currentFrame < 0 ? 0 : currentFrame) : 0),
+      pose: tour ? tour.pose : (playing ? poseNow() : "proud"),
       time: clock,
       flourish: previewFlourish || flourishAmount(clock),
       reduceMotion: reduceMotion,
-      morphT: playing ? morphT : 0,
-      imagery: playing ? imageryNow() : null,
+      morphT: tour ? tour.morphT : (playing ? morphT : 0),
+      imagery: tour ? tour.imagery : (playing ? imageryNow() : null),
       episodeMark: episode.episode,
       flash: flashing && dreamFlash ? { hue: dreamFlash.hue, mix: 1 } : null
     });
@@ -2358,6 +2429,14 @@ import { createGlyphStage } from "./js/glyph-stage.mjs";
       offset += n;
     }
     return 0;
+  }
+
+  if (previewTour) {
+    playing = true;
+    tourStarted = performance.now();
+    document.documentElement.dataset.state = "playing";
+    document.documentElement.dataset.hero = HERO;
+    hintEl.textContent = "";
   }
 
   var previewPhaseId = previewParams.get("phase") || "";
