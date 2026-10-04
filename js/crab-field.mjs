@@ -14,6 +14,7 @@ import {
   hslToRgb,
   mixRgb,
   phaseColorAt,
+  smoothstep,
 } from "./phase-color.mjs";
 
 export const CELL_ASPECT = 0.52;
@@ -387,21 +388,147 @@ function sortedDiet(growth, ink) {
   return sortByInk(growth.diet, ink);
 }
 
-function shellColor(local, luma, hues) {
-  const n = hues.length;
-  let idx = 0;
-  if (n > 1) {
-    const blot = cellHash(Math.floor(local.x * 4.5 + 3), Math.floor(local.y * 4.5 + 1));
-    idx = Math.min(n - 1, Math.floor(blot * n));
-    if (local.x > 0.45) idx = n - 1;
-    else if (local.x < -0.45 && n > 2) idx = Math.min(n - 1, 1 + (idx % 2));
-    if (local.y < -0.25 && n > 3) idx = Math.min(n - 1, Math.max(idx, Math.min(3, n - 1)));
+/**
+ * Story colors for the shell. Each phase is a full RGB gradient
+ * (shadow → mid → light), and progress walks into the next beat.
+ * Nothing here snaps a cell onto a swatch.
+ */
+const STORY_ARC = Object.freeze([
+  Object.freeze({
+    id: "hook",
+    shadow: Object.freeze([0.58, 0.62, 0.68]),
+    mid: Object.freeze([0.78, 0.81, 0.84]),
+    light: Object.freeze([0.96, 0.97, 0.96]),
+  }),
+  Object.freeze({
+    id: "room",
+    shadow: Object.freeze([0.28, 0.4, 0.38]),
+    mid: Object.freeze([0.42, 0.74, 0.46]),
+    light: Object.freeze([0.86, 0.93, 0.52]),
+  }),
+  Object.freeze({
+    id: "itch",
+    shadow: Object.freeze([0.46, 0.24, 0.52]),
+    mid: Object.freeze([0.9, 0.62, 0.22]),
+    light: Object.freeze([0.98, 0.9, 0.4]),
+  }),
+  Object.freeze({
+    id: "turn",
+    shadow: Object.freeze([0.5, 0.16, 0.62]),
+    mid: Object.freeze([0.95, 0.78, 0.22]),
+    light: Object.freeze([0.98, 0.52, 0.46]),
+  }),
+  Object.freeze({
+    id: "craft",
+    shadow: Object.freeze([0.16, 0.32, 0.68]),
+    mid: Object.freeze([0.16, 0.66, 0.68]),
+    light: Object.freeze([0.52, 0.9, 0.78]),
+  }),
+  Object.freeze({
+    id: "moral",
+    shadow: Object.freeze([0.14, 0.36, 0.52]),
+    mid: Object.freeze([0.5, 0.34, 0.74]),
+    light: Object.freeze([0.96, 0.82, 0.4]),
+  }),
+  Object.freeze({
+    id: "encore",
+    shadow: Object.freeze([0.12, 0.4, 0.48]),
+    mid: Object.freeze([0.94, 0.52, 0.62]),
+    light: Object.freeze([0.99, 0.84, 0.36]),
+  }),
+  Object.freeze({
+    id: "crest",
+    shadow: Object.freeze([0.1, 0.32, 0.46]),
+    mid: Object.freeze([0.42, 0.86, 0.82]),
+    light: Object.freeze([1, 0.9, 0.46]),
+  }),
+]);
+
+const STORY_INDEX = Object.freeze({
+  hook: 0,
+  room: 1,
+  itch: 2,
+  turn: 3,
+  craft: 4,
+  moral: 5,
+  encore: 6,
+});
+
+function mixStory(a, b, t) {
+  const s = clamp01(t);
+  return {
+    shadow: mixRgb(a.shadow, b.shadow, s),
+    mid: mixRgb(a.mid, b.mid, s),
+    light: mixRgb(a.light, b.light, s),
+  };
+}
+
+function gradient3(a, b, c, t) {
+  const s = clamp01(t);
+  const u = s * s * (3 - 2 * s);
+  if (u < 0.5) return mixRgb(a, b, u * 2);
+  return mixRgb(b, c, (u - 0.5) * 2);
+}
+
+function iridescence(t) {
+  const stops = [
+    [0.98, 0.82, 0.32],
+    [0.96, 0.42, 0.58],
+    [0.32, 0.86, 0.84],
+    [0.58, 0.38, 0.92],
+    [0.98, 0.82, 0.32],
+  ];
+  const x = clamp01(t) * 4;
+  const i = Math.min(3, Math.floor(x));
+  const f = x - i;
+  const s = f * f * (3 - 2 * f);
+  return mixRgb(stops[i], stops[i + 1], s);
+}
+
+function storyKeys(phase, progress) {
+  const i = STORY_INDEX[phase] ?? 0;
+  return mixStory(STORY_ARC[i], STORY_ARC[i + 1], smoothstep(clamp01(progress)));
+}
+
+/**
+ * Foreground RGB for one shell cell. Luma walks a three-stop gradient,
+ * the surface point shears that gradient across the body, a hit bruises
+ * purple into the shadow and yellow into the light, and the lodged grain
+ * throws a pearly film.
+ */
+export function storyInk(opts = {}) {
+  const phase = STORY_INDEX[opts.phase] != null ? opts.phase : "hook";
+  const keys = storyKeys(phase, opts.progress);
+  const luma = clamp01(opts.luma);
+  const localX = Number(opts.x) || 0;
+  const localY = Number(opts.y) || 0;
+  const mat = opts.mat || "shell";
+  const along = clamp01(0.5 + localX * 0.42 + localY * 0.22);
+  const dome = clamp01((localY + 0.25) / 0.85);
+  const shadeT = clamp01(luma * 0.78 + dome * 0.14 + along * 0.08);
+  let fg = gradient3(keys.shadow, keys.mid, keys.light, shadeT);
+  fg = mixRgb(fg, gradient3(keys.shadow, keys.mid, keys.light, along), 0.22);
+  if (mat === "leg") fg = mixRgb(fg, keys.shadow, 0.28);
+  if (mat === "claw") fg = mixRgb(fg, keys.mid, 0.22);
+  const impact = clamp01(opts.impact);
+  if (impact > 0) {
+    const purple = [0.56, 0.16, 0.74];
+    const yellow = [0.99, 0.9, 0.28];
+    fg = mixRgb(fg, mixRgb(purple, yellow, luma), impact * (mat === "leg" ? 0.28 : 0.62));
   }
-  const hue = hues[idx];
-  const lit = 0.62 + clamp01(luma) * 0.34;
-  const sat = Math.min(0.95, hue.s * (0.9 + luma * 0.15));
-  const tone = hslToRgb(hue.h, sat, lit);
-  return mixRgb(tone, [1, 1, 0.98], clamp01(luma) * 0.28);
+  const pearl =
+    phase === "itch" ? 0.28 : phase === "turn" ? 0.72 : phase === "craft" ? 0.86 : phase === "moral" ? 0.92 : phase === "encore" ? 1 : 0;
+  if (pearl && (mat === "shell" || mat === "pearl" || mat === "grain")) {
+    const dist = Math.hypot(localX - 0.1, localY - 0.02);
+    if (dist < 0.3 || mat === "pearl" || mat === "grain") {
+      const film = clamp01(0.5 + (Number(opts.nx) || 0) * 0.42 + (Number(opts.ny) || 0) * 0.28 + (0.16 - dist));
+      const amt = mat === "grain" ? 0.35 : mat === "pearl" ? 0.8 : (1 - dist / 0.3) * pearl;
+      fg = mixRgb(fg, iridescence(film), clamp01(amt));
+    }
+  }
+  if (mat === "grain" && phase === "itch") fg = mixRgb([0.96, 0.74, 0.28], fg, 0.35);
+  if (mat === "eye") fg = mixRgb([0.98, 0.99, 0.96], fg, 0.2);
+  return fg;
 }
 
 function impactAmount(phase, frame, time, reduce) {
@@ -594,19 +721,31 @@ function paintAudience(cells, state, palette, growth) {
   }
 }
 
-function shadeCrab(hit, normal, local, growth, palette, col, row, ink) {
+function shadeCrab(hit, normal, local, growth, impact, col, row, ink) {
   const ndotl = Math.max(0, normal.x * LIGHT.x + normal.y * LIGHT.y);
   const luma = 0.22 + ndotl * 0.78;
   const tones = sortedDiet(growth, ink);
+  const inkOfStory = (mat, lum) =>
+    storyInk({
+      phase: growth.phase,
+      progress: growth.progress,
+      x: local.x,
+      y: local.y,
+      nx: normal.x,
+      ny: normal.y,
+      luma: lum,
+      impact,
+      mat,
+    });
   if (hit.mat === "pupil") {
     const ch = tones.includes("@") ? "@" : tones.includes("*") ? "*" : "o";
     return { ch, fg: [0.22, 0.24, 0.28], bg: null, luma: 0.2, role: "crab" };
   }
   if (hit.mat === "eye") {
     const ch = tones.includes("O") ? "O" : "o";
-    return { ch, fg: [0.97, 0.98, 0.94], bg: null, luma: 0.95, role: "crab" };
+    return { ch, fg: inkOfStory("eye", 0.95), bg: null, luma: 0.95, role: "crab" };
   }
-  const fg = shellColor(local, luma, growth.hues);
+  const fg = inkOfStory(hit.mat, luma);
   const edge = hit.d > -0.016;
   let ch = edge ? edgeFromDiet(normal.x, normal.y, tones) : shadeGlyph(luma, tones, col, row);
   if (!edge) {
@@ -643,7 +782,7 @@ function rimBraille(world, pose, cols, rows, aspect) {
   return brailleFromMask(mask);
 }
 
-function paintGrain(cells, local, hit, growth, col, row, cols, rows) {
+function paintGrain(cells, local, hit, normal, growth, col, row) {
   const phase = growth.phase;
   if (phase === "hook" || phase === "room") return false;
   const gx = 0.1;
@@ -651,21 +790,31 @@ function paintGrain(cells, local, hit, growth, col, row, cols, rows) {
   const dist = Math.hypot(local.x - gx, local.y - gy);
   if (hit.mat !== "shell" || hit.d > 0) return false;
   if (dist > 0.16) return false;
-  const gold = hslToRgb(42, phase === "itch" ? 0.35 : 0.72, phase === "itch" ? 0.72 : 0.78);
+  const film = storyInk({
+    phase,
+    progress: growth.progress,
+    x: local.x,
+    y: local.y,
+    nx: normal.x,
+    ny: normal.y,
+    luma: 0.8,
+    impact: 0,
+    mat: dist < 0.045 ? "grain" : "pearl",
+  });
   if (dist < 0.045) {
     const ch = phase === "itch" ? "." : growth.diet.includes("@") ? "@" : "o";
-    cells[row][col] = { ch, fg: mixRgb(gold, [1, 0.96, 0.82], 0.35), bg: null, role: "grain" };
+    cells[row][col] = { ch, fg: film, bg: null, role: "grain" };
     return true;
   }
   if ((phase === "turn" || phase === "craft" || phase === "moral" || phase === "encore") && dist < 0.12) {
     const ch = growth.diet.includes("o") ? "o" : cells[row][col].ch;
-    cells[row][col] = { ch, fg: mixRgb(gold, [1, 0.98, 0.9], 0.45), bg: null, role: "pearl" };
+    cells[row][col] = { ch, fg: film, bg: null, role: "pearl" };
     return true;
   }
   return false;
 }
 
-function paintCrab(cells, state, palette, growth, pose) {
+function paintCrab(cells, state, growth, pose, impact) {
   const cols = cells[0].length;
   const rows = cells.length;
   const floor = Math.floor(rows * 0.8);
@@ -683,18 +832,21 @@ function paintCrab(cells, state, palette, growth, pose) {
       if (hit.d > -0.02 && hit.mat !== "eye" && hit.mat !== "pupil") {
         const braille = rimBraille(world, pose, cols, rows, aspect);
         if (braille && braille !== "⠀") {
-          const tone = shellColor(local, 0.72, growth.hues);
-          cells[r][c] = {
-            ch: braille,
-            fg: [0.2 + tone[0] * 0.8, 0.2 + tone[1] * 0.8, 0.22 + tone[2] * 0.78],
-            bg: null,
-            role: "rim",
-          };
+          const tone = storyInk({
+            phase: growth.phase,
+            progress: growth.progress,
+            x: local.x,
+            y: local.y,
+            luma: 0.82,
+            impact,
+            mat: "shell",
+          });
+          cells[r][c] = { ch: braille, fg: tone, bg: null, role: "rim" };
           continue;
         }
       }
       const normal = crabNormal(local.x, local.y, pose);
-      const shaded = shadeCrab(hit, normal, local, growth, palette, c, r, state.ink);
+      const shaded = shadeCrab(hit, normal, local, growth, impact, c, r, state.ink);
       let fg = shaded.fg;
       let bg = shaded.bg;
       if (hot) {
@@ -707,7 +859,7 @@ function paintCrab(cells, state, palette, growth, pose) {
         if (!growth.diet.includes("*") && !growth.diet.includes("+")) ch = "o";
       }
       cells[r][c] = { ch, fg, bg, role: "crab" };
-      paintGrain(cells, local, hit, growth, c, r, cols, rows);
+      paintGrain(cells, local, hit, normal, growth, c, r);
     }
   }
 }
@@ -774,7 +926,7 @@ export function renderGlyphField(state = {}) {
     }
     paintSigns(cells, scene, palette, growth);
     paintAudience(cells, scene, palette, growth);
-    paintCrab(cells, scene, palette, growth, pose);
+    paintCrab(cells, scene, growth, pose, impact + (reduce ? 0 : follow.bite * 0.45));
     paintSparks(cells, scene, palette, growth, pose);
   }
   return { cols, rows, cells, palette, pose, growth };

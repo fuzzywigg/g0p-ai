@@ -17,6 +17,7 @@ import {
   gridForViewport,
   poseParams,
   renderGlyphField,
+  storyInk,
 } from "../js/crab-field.mjs";
 import { rgbSaturation } from "../js/phase-color.mjs";
 
@@ -244,6 +245,31 @@ test("scene changes flow on the point grid instead of cutting", () => {
   assert.notEqual(mid, fieldToText(from));
   assert.notEqual(mid, fieldToText(to));
   assert.equal(fieldToText(flowFields(from, to, 0.2, true)), fieldToText(to));
+});
+
+test("glyph color follows the story as a full gradient", () => {
+  const at = (luma) => storyInk({ phase: "hook", progress: 0, x: 0, y: 0, luma, impact: 0, mat: "shell" });
+  const lo = at(0.15);
+  const mid = at(0.5);
+  const hi = at(0.92);
+  for (let i = 0; i < 3; i++) {
+    const low = Math.min(lo[i], hi[i]);
+    const high = Math.max(lo[i], hi[i]);
+    assert.ok(mid[i] >= low - 0.04 && mid[i] <= high + 0.04, `channel ${i} ${mid[i]}`);
+  }
+  assert.ok(hi[2] + 0.02 >= hi[0], "hook light stays cool");
+  const calm = storyInk({ phase: "turn", progress: 0.4, x: -0.35, y: 0.25, luma: 0.25, impact: 0, mat: "shell" });
+  const smash = storyInk({ phase: "turn", progress: 0.4, x: -0.35, y: 0.25, luma: 0.25, impact: 0.72, mat: "shell" });
+  const gap = Math.abs(smash[0] - calm[0]) + Math.abs(smash[2] - calm[2]);
+  assert.ok(gap > 0.08, `hit should bruise the ink ${gap}`);
+  const deep = storyInk({ phase: "craft", progress: 0.6, x: -0.4, y: 0.25, luma: 0.2, impact: 0, mat: "shell" });
+  assert.ok(deep[2] > deep[0], "new depth runs blue");
+  const gate = storyInk({ phase: "encore", progress: 1, x: 0, y: 0.35, luma: 0.92, impact: 0, mat: "shell" });
+  assert.ok(gate[0] > gate[2], "the turned gate runs gold");
+  const filmA = storyInk({ phase: "encore", progress: 0.8, x: 0.1, y: 0.02, nx: -0.6, ny: 0.4, luma: 0.7, impact: 0, mat: "pearl" });
+  const filmB = storyInk({ phase: "encore", progress: 0.8, x: 0.1, y: 0.02, nx: 0.7, ny: -0.3, luma: 0.7, impact: 0, mat: "pearl" });
+  const filmGap = Math.abs(filmA[0] - filmB[0]) + Math.abs(filmA[1] - filmB[1]) + Math.abs(filmA[2] - filmB[2]);
+  assert.ok(filmGap > 0.12, `pearl film ${filmGap}`);
 });
 
 test("the grid budget stays inside a laptop frame", () => {

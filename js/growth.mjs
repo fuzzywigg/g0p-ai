@@ -140,5 +140,6 @@ export function growthState(phase, progress = 0) {
     hues,
     hueCount: hues.length,
     fraction: stageFraction(phase, progress),
+    progress: clamp01(progress),
   };
 }
