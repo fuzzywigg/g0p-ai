@@ -21,7 +21,7 @@
       height: 100%;
       background: var(--bg);
       color: var(--caption);
-      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      font-family: "DejaVu Sans Mono", "Cascadia Mono", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
       overflow: hidden;
       touch-action: manipulation;
       user-select: none;
@@ -178,7 +178,7 @@
 </head>
 <body>
   <h1>The Ratchet That Never Turned</h1>
-  <canvas id="field" aria-label="Pointillism field. Click to begin episode 0006. Geryon the crab tells the fable."></canvas>
+  <canvas id="field" aria-label="ASCII glyph theater. Click to begin episode 0006. Geryon the crab tells the fable."></canvas>
   <div id="hint">click</div>
   <div id="stage-ui">
     <nav id="catalog" aria-label="Hub-approved public episodes">
@@ -292,7 +292,8 @@ phase: encore
 
 [Geryon] — Geryon
   </script>
-  <script>
+  <script type="module">
+import { createGlyphStage } from "./js/glyph-stage.mjs";
 (function () {
   "use strict";
 
@@ -1309,6 +1310,7 @@ phase: encore
   var speechStatus = document.getElementById("speech-status");
   var stageUi = document.getElementById("stage-ui");
   var ctx = canvas.getContext("2d", { alpha: false });
+  var glyphStage = createGlyphStage(canvas, ctx);
   var dpr = Math.max(1, Math.min(2, window.devicePixelRatio || 1));
   var particles = [];
   var playing = false;
@@ -1329,6 +1331,11 @@ phase: encore
   var dreamFlash = null;
   var dreamPoints = [];
   var morphPeakArmed = false;
+  var flourishUntil = 0;
+  var flourishMs = 460;
+  var previewParams = new URLSearchParams(window.location.search);
+  var previewStill = previewParams.get("still") === "1";
+  var previewFlourish = previewParams.get("flourish") === "1" ? 0.85 : 0;
 
   function syncMuteButton() {
     muteToggle.setAttribute("aria-pressed", muted ? "true" : "false");
@@ -1390,6 +1397,7 @@ phase: encore
     canvas.style.width = w + "px";
     canvas.style.height = h + "px";
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    glyphStage.resize(w, h);
     if (playing) {
       assignTargets(tableauForPhase(currentScene < 0 ? 0 : currentScene, currentFrame < 0 ? 0 : currentFrame).art);
       morphing = true;
@@ -1543,7 +1551,7 @@ phase: encore
     document.documentElement.dataset.glyph = tableau.id;
     document.documentElement.dataset.phase = tableau.phase || tableau.id;
     document.documentElement.dataset.template = tableau.template || "";
-    document.documentElement.dataset.pose = tableau.pose || "";
+    document.documentElement.dataset.pose = poseNow() || tableau.pose || "";
     document.documentElement.dataset.frame = String(tableau.frame || 0);
     document.documentElement.dataset.scene = String(sceneIndex);
     assignTargets(tableau.art);
@@ -1585,7 +1593,46 @@ phase: encore
     if (!flash) return;
     dreamFlash = flash;
     dreamPoints = dreamBurstPoints(flash, w, h);
+    flourishMs = reason === "breakthrough" ? 720 : 460;
+    flourishUntil = performance.now() + flourishMs;
     document.documentElement.dataset.dream = isFlashActive(flash, performance.now()) ? "1" : "0";
+  }
+
+  function flourishAmount(now) {
+    if (reduceMotion || !flourishUntil) return 0;
+    var left = flourishUntil - now;
+    if (left <= 0) return 0;
+    return Math.max(0, Math.min(1, left / flourishMs));
+  }
+
+  function phaseProgressNow() {
+    if (captionIndex < 0 || !episode.scenes.length) return 0;
+    var sceneIdx = sceneIndexForCaption(episode, captionIndex);
+    var offset = 0;
+    var i;
+    for (i = 0; i < sceneIdx; i++) offset += episode.scenes[i].captions.length;
+    var count = episode.scenes[sceneIdx].captions.length;
+    if (count <= 1) return 0.35;
+    return (captionIndex - offset) / (count - 1);
+  }
+
+  function poseNow() {
+    var phase = phaseAt(currentScene < 0 ? 0 : currentScene);
+    var img = FABLE_IMAGERY[phase.id] || {};
+    var frame = currentFrame < 0 ? 0 : currentFrame;
+    if (phase.id === "turn") {
+      return frame ? (img.breakthrough && img.breakthrough.pose) || "snap" : (img.approach && img.approach.pose) || "racer";
+    }
+    if (phase.id === "encore") return frame ? "bow" : "enter";
+    return img.pose || "proud";
+  }
+
+  function imageryNow() {
+    var phase = phaseAt(currentScene < 0 ? 0 : currentScene);
+    var img = FABLE_IMAGERY[phase.id] || {};
+    var frame = currentFrame < 0 ? 0 : currentFrame;
+    if (phase.id === "turn") return frame ? img.breakthrough || {} : img.approach || {};
+    return img;
   }
 
   function expireDreamFlash(now) {
@@ -1616,26 +1663,28 @@ phase: encore
   }
 
   function draw() {
-    ctx.fillStyle = "#000";
-    ctx.fillRect(0, 0, w, h);
     var now = performance.now();
     var flashing = expireDreamFlash(now);
-    var i, p;
-    for (i = 0; i < particles.length; i++) {
-      p = particles[i];
-      if (flashing && p.hold && i % 17 === 0) {
-        ctx.fillStyle = "hsla(" + dreamFlash.hue + "," + FLASH_CHROMA.fieldSat + "%," + FLASH_CHROMA.fieldLight + "%," + Math.min(1, p.a + 0.32) + ")";
-        ctx.beginPath();
-        ctx.arc(p.x, p.y, p.r + 0.35, 0, Math.PI * 2);
-        ctx.fill();
-      } else {
-        ctx.fillStyle = "rgba(255,255,255," + p.a + ")";
-        ctx.beginPath();
-        ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2);
-        ctx.fill();
-      }
-    }
-    if (flashing) drawDreamBurst();
+    var phase = phaseAt(currentScene < 0 ? 0 : currentScene);
+    var tableau = tableauForPhase(currentScene < 0 ? 0 : currentScene, currentFrame < 0 ? 0 : currentFrame);
+    var clock = previewStill ? 1680 : now;
+    glyphStage.render({
+      width: w,
+      height: h,
+      playing: playing,
+      phaseId: playing ? phase.id : "hook",
+      progress: playing ? phaseProgressNow() : 0,
+      template: playing ? tableau.template || "" : "",
+      frame: playing ? (currentFrame < 0 ? 0 : currentFrame) : 0,
+      pose: playing ? poseNow() : "proud",
+      time: clock,
+      flourish: previewFlourish || flourishAmount(clock),
+      reduceMotion: reduceMotion,
+      morphT: playing ? morphT : 0,
+      imagery: playing ? imageryNow() : null,
+      episodeMark: episode.episode,
+      flash: flashing && dreamFlash ? { hue: dreamFlash.hue, mix: 1 } : null
+    });
   }
 
   var last = 0;
@@ -1755,6 +1804,44 @@ phase: encore
 
   resize();
   spawnParticles();
+
+  function captionIndexForPhase(phaseId, progress) {
+    var offset = 0;
+    var i, n, local, t;
+    for (i = 0; i < episode.scenes.length; i++) {
+      n = episode.scenes[i].captions.length;
+      if (episode.scenes[i].phase === phaseId) {
+        t = Number(progress);
+        if (!isFinite(t)) t = 0.35;
+        if (t < 0) t = 0;
+        if (t > 1) t = 1;
+        local = Math.round(t * Math.max(0, n - 1));
+        return offset + local;
+      }
+      offset += n;
+    }
+    return 0;
+  }
+
+  var previewPhaseId = previewParams.get("phase") || "";
+  if (previewPhaseId) {
+    playing = true;
+    document.documentElement.dataset.state = "playing";
+    document.documentElement.dataset.hero = HERO;
+    hintEl.textContent = "";
+    captionIndex = captionIndexForPhase(previewPhaseId, previewParams.get("progress"));
+    syncScene(captionIndex);
+    if (previewStill) {
+      morphing = false;
+      morphT = 1;
+      morphStart = performance.now() - morphMs;
+      document.documentElement.dataset.morphing = "0";
+    }
+    captionsEl.textContent = episode.captions[captionIndex] || "";
+    captionsEl.classList.add("in");
+    if (previewStill) draw();
+  }
+
   requestAnimationFrame(frame);
 })();
   </script>
