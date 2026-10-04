@@ -160,6 +160,12 @@ test("the crab is a solid shaded shape and fills the center of the grid", () => 
   const sea = hook.palette.sea;
   const seaL = (sea[0] + sea[1] + sea[2]) / 3;
   assert.ok(meanCrabLight(hook) > seaL + 0.35, "crab cells should read against the sea");
+  for (const row of hook.cells) {
+    for (const cell of row) {
+      if (cell.role !== "crab" && cell.role !== "rim" && cell.role !== "grain" && cell.role !== "pearl") continue;
+      assert.equal(cell.bg, null, "color lives on the glyph, not a cell block");
+    }
+  }
   assert.ok(lowestCrabRow(hook) < 0.82);
   assert.ok(lowestCrabRow(room) < 0.82);
 });
@@ -177,7 +183,17 @@ test("color and glyphs are earned, then the encore spends the full ASCII set", (
   assert.ok(crabSpanFraction(encore) > crabSpanFraction(hook) + 0.12);
   assert.ok(meanSat(hook) + 0.05 < meanSat(encore));
   assert.ok(countRole(itch, "grain") > 0, "a sand grain lodges during the itch");
-  assert.ok(countRole(scene("turn", { frame: 1, progress: 0.45 }), "pearl") > 0);
+  const pearl = scene("turn", { frame: 1, progress: 0.45 });
+  assert.ok(countRole(pearl, "pearl") > 0);
+  for (const field of [itch, pearl, encore]) {
+    for (const row of field.cells) {
+      for (const cell of row) {
+        if (cell.role === "crab" || cell.role === "rim" || cell.role === "grain" || cell.role === "pearl") {
+          assert.equal(cell.bg, null);
+        }
+      }
+    }
+  }
   const seen = new Set();
   for (const row of encore.cells) {
     for (const cell of row) if (cell.ch && cell.ch !== " ") seen.add(cell.ch);

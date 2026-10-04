@@ -387,10 +387,6 @@ function sortedDiet(growth, ink) {
   return sortByInk(growth.diet, ink);
 }
 
-function darken(rgb, t = 0.32) {
-  return [rgb[0] * t, rgb[1] * t, rgb[2] * t + 0.01];
-}
-
 function shellColor(local, luma, hues) {
   const n = hues.length;
   let idx = 0;
@@ -402,9 +398,10 @@ function shellColor(local, luma, hues) {
     if (local.y < -0.25 && n > 3) idx = Math.min(n - 1, Math.max(idx, Math.min(3, n - 1)));
   }
   const hue = hues[idx];
-  const lit = 0.42 + clamp01(luma) * 0.46;
-  const sat = Math.min(0.92, hue.s * (0.8 + luma * 0.25));
-  return hslToRgb(hue.h, sat, lit);
+  const lit = 0.62 + clamp01(luma) * 0.34;
+  const sat = Math.min(0.95, hue.s * (0.9 + luma * 0.15));
+  const tone = hslToRgb(hue.h, sat, lit);
+  return mixRgb(tone, [1, 1, 0.98], clamp01(luma) * 0.28);
 }
 
 function impactAmount(phase, frame, time, reduce) {
@@ -463,8 +460,7 @@ function paintWater(cells, state, palette, growth) {
 
       if (phase === "encore" && r === 1 && (c < 8 || c > cols - 9)) {
         ch = diet.includes("=") ? "=" : "o";
-        fg = mixRgb(palette.accent, palette.hi, 0.5);
-        bg = mixRgb(palette.lo, palette.accent, 0.35);
+        fg = mixRgb(palette.accent, palette.hi, 0.55);
         role = "curtain";
       }
 
@@ -604,14 +600,13 @@ function shadeCrab(hit, normal, local, growth, palette, col, row, ink) {
   const tones = sortedDiet(growth, ink);
   if (hit.mat === "pupil") {
     const ch = tones.includes("@") ? "@" : tones.includes("*") ? "*" : "o";
-    return { ch, fg: [0.04, 0.05, 0.07], bg: [0.92, 0.94, 0.9], luma: 0.1, role: "crab" };
+    return { ch, fg: [0.22, 0.24, 0.28], bg: null, luma: 0.2, role: "crab" };
   }
   if (hit.mat === "eye") {
     const ch = tones.includes("O") ? "O" : "o";
-    return { ch, fg: [0.06, 0.07, 0.08], bg: [0.9, 0.93, 0.88], luma: 0.92, role: "crab" };
+    return { ch, fg: [0.97, 0.98, 0.94], bg: null, luma: 0.95, role: "crab" };
   }
-  const tone = shellColor(local, luma, growth.hues);
-  const fg = [0.16 + tone[0] * 0.84, 0.16 + tone[1] * 0.84, 0.18 + tone[2] * 0.82];
+  const fg = shellColor(local, luma, growth.hues);
   const edge = hit.d > -0.016;
   let ch = edge ? edgeFromDiet(normal.x, normal.y, tones) : shadeGlyph(luma, tones, col, row);
   if (!edge) {
@@ -659,13 +654,12 @@ function paintGrain(cells, local, hit, growth, col, row, cols, rows) {
   const gold = hslToRgb(42, phase === "itch" ? 0.35 : 0.72, phase === "itch" ? 0.72 : 0.78);
   if (dist < 0.045) {
     const ch = phase === "itch" ? "." : growth.diet.includes("@") ? "@" : "o";
-    cells[row][col] = { ch, fg: [0.25, 0.16, 0.05], bg: gold, role: "grain" };
+    cells[row][col] = { ch, fg: mixRgb(gold, [1, 0.96, 0.82], 0.35), bg: null, role: "grain" };
     return true;
   }
   if ((phase === "turn" || phase === "craft" || phase === "moral" || phase === "encore") && dist < 0.12) {
     const ch = growth.diet.includes("o") ? "o" : cells[row][col].ch;
-    const bg = mixRgb(cells[row][col].bg || gold, gold, 0.65);
-    cells[row][col] = { ch, fg: darken(bg, 0.28), bg, role: "pearl" };
+    cells[row][col] = { ch, fg: mixRgb(gold, [1, 0.98, 0.9], 0.45), bg: null, role: "pearl" };
     return true;
   }
   return false;
