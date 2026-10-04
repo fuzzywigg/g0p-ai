@@ -69,12 +69,34 @@ function meanCrabLight(field) {
   let sum = 0;
   for (const row of field.cells) {
     for (const cell of row) {
-      if (cell.role !== "crab" || !cell.bg) continue;
-      sum += (cell.bg[0] + cell.bg[1] + cell.bg[2]) / 3;
+      if ((cell.role !== "crab" && cell.role !== "rim") || !cell.fg) continue;
+      sum += (cell.fg[0] + cell.fg[1] + cell.fg[2]) / 3;
       n += 1;
     }
   }
   return sum / Math.max(n, 1);
+}
+
+function longestLetterRun(field) {
+  let best = 1;
+  for (const row of field.cells) {
+    let run = 1;
+    let prev = 0;
+    for (const cell of row) {
+      if (cell.role !== "crab") {
+        run = 1;
+        prev = 0;
+        continue;
+      }
+      const code = cell.ch.codePointAt(0);
+      const letter = code >= 65 && code <= 90;
+      if (letter && prev && code === prev + 1) run += 1;
+      else run = 1;
+      if (run > best) best = run;
+      prev = letter ? code : 0;
+    }
+  }
+  return best;
 }
 
 function countRole(field, role) {
@@ -89,7 +111,7 @@ function lowestCrabRow(field) {
   let maxR = -1;
   field.cells.forEach((row, r) => {
     for (const cell of row) {
-      if (cell.role === "crab" || cell.role === "grain" || cell.role === "pearl") maxR = Math.max(maxR, r);
+      if (cell.role === "crab" || cell.role === "rim" || cell.role === "grain" || cell.role === "pearl") maxR = Math.max(maxR, r);
     }
   });
   return maxR / field.rows;
@@ -161,6 +183,7 @@ test("color and glyphs are earned, then the encore spends the full ASCII set", (
     for (const cell of row) if (cell.ch && cell.ch !== " ") seen.add(cell.ch);
   }
   assert.ok(seen.size >= 50, `encore unique glyphs ${seen.size}`);
+  assert.ok(longestLetterRun(encore) < 4, `letter run ${longestLetterRun(encore)}`);
   assert.match(fieldToText(encore), /CURTAIN/);
   assert.match(fieldToText(encore), /THE GATE TURNED/);
   assert.match(fieldToText(scene("turn", { frame: 1, progress: 0.4 })), /BREAK THROUGH/);
@@ -181,6 +204,12 @@ test("motion, feeding claps, and reduced motion stay deterministic", () => {
   const stillA = scene("room", { reduceMotion: true, time: 0 });
   const stillB = scene("room", { reduceMotion: true, time: 4200 });
   assert.equal(fieldToText(stillA), fieldToText(stillB));
+  const left = scene("room", { reduceMotion: false, time: 400, flourish: 0, progress: 0.45 });
+  const right = scene("room", { reduceMotion: false, time: 3000, flourish: 0, progress: 0.45 });
+  assert.ok(Math.abs(left.pose.x - right.pose.x) > 0.45, `scuttle ${left.pose.x} vs ${right.pose.x}`);
+  const smash = scene("turn", { frame: 1, progress: 0.5, reduceMotion: false, time: 1680 });
+  assert.ok(smash.pose.squashX > 1.35, `squashX ${smash.pose.squashX}`);
+  assert.ok(smash.pose.squashY < 0.78, `squashY ${smash.pose.squashY}`);
   const live = scene("room", { reduceMotion: false, time: 900, flourish: 0, progress: 0.45 });
   const clicked = scene("room", { reduceMotion: false, time: 900, flourish: 0.55, progress: 0.45 });
   assert.notEqual(fieldToText(live), fieldToText(clicked));
@@ -204,7 +233,7 @@ test("scene changes flow on the point grid instead of cutting", () => {
 test("the grid budget stays inside a laptop frame", () => {
   const desktop = gridForViewport(1440, 900);
   const phone = gridForViewport(390, 700);
-  assert.ok(desktop.cols * desktop.rows <= 6800);
+  assert.ok(desktop.cols * desktop.rows <= 7600);
   assert.ok(phone.cols >= 64);
   assert.ok(phone.rows >= 28);
   assert.ok(phone.cols <= desktop.cols);

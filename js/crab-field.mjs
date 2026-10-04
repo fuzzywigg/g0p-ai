@@ -5,7 +5,8 @@
  * glyph from the diet Geryon has eaten so far and a bruise color he has earned.
  */
 
-import { cellHash, clamp01 } from "./glyph-ramp.mjs";
+import { BRAILLE_DOTS, brailleFromMask, cellHash, clamp01 } from "./glyph-ramp.mjs";
+import { edgeFromDiet, shadeGlyph, sortByInk, trophyLetter, vocabularyFreckle } from "./glyph-coverage.mjs";
 import { SHADE_ORDER, growthState } from "./growth.mjs";
 import {
   applyFlash,
@@ -45,9 +46,9 @@ const TEMPLATES = Object.freeze([
 ]);
 
 const LEGS = Object.freeze([
-  Object.freeze({ x0: 0.28, y0: -0.08, x1: 0.92, y1: -0.18, w: 0.07, ph: 0.2 }),
-  Object.freeze({ x0: 0.22, y0: -0.16, x1: 0.78, y1: -0.36, w: 0.065, ph: 1.4 }),
-  Object.freeze({ x0: 0.12, y0: -0.22, x1: 0.52, y1: -0.52, w: 0.06, ph: 2.6 }),
+  Object.freeze({ x0: 0.24, y0: -0.04, xm: 0.52, ym: -0.02, x1: 0.9, y1: -0.2, w: 0.055, ph: 0.2 }),
+  Object.freeze({ x0: 0.2, y0: -0.14, xm: 0.48, ym: -0.22, x1: 0.82, y1: -0.42, w: 0.05, ph: 1.5 }),
+  Object.freeze({ x0: 0.12, y0: -0.22, xm: 0.34, ym: -0.36, x1: 0.58, y1: -0.56, w: 0.046, ph: 2.7 }),
 ]);
 
 function assertNever(value) {
@@ -92,29 +93,6 @@ function rotate(x, y, ang) {
   return { x: x * c - y * s, y: x * s + y * c };
 }
 
-function scuttleAmp(phase) {
-  switch (phase) {
-    case "hook":
-      return 0.46;
-    case "room":
-      return 0.34;
-    case "itch":
-      return 0.22;
-    case "turn":
-      return 0.14;
-    case "craft":
-      return 0.1;
-    case "moral":
-      return 0.08;
-    case "encore":
-      return 0.05;
-    default: {
-      const _never = phase;
-      return assertNever(_never);
-    }
-  }
-}
-
 export function blinkAmount(timeMs) {
   const period = 3800;
   const t = ((Number(timeMs) % period) + period) % period;
@@ -127,13 +105,13 @@ export function blinkAmount(timeMs) {
 export function gridForViewport(width, height) {
   const w = Math.max(1, Number(width) || 1);
   const h = Math.max(1, Number(height) || 1);
-  let cols = Math.round(w / (w < 780 ? 12 : 14));
-  cols = Math.max(64, Math.min(108, cols));
+  let cols = Math.round(w / (w < 780 ? 8.2 : 9));
+  cols = Math.max(72, Math.min(156, cols));
   let rows = Math.round(h / (w / cols / CELL_ASPECT));
-  rows = Math.max(28, Math.min(52, rows));
-  while (cols * rows > 5200 && cols > 64) cols -= 2;
-  rows = Math.max(28, Math.min(52, Math.round(h / (w / cols / CELL_ASPECT))));
-  while (cols * rows > 5200 && rows > 28) rows -= 1;
+  rows = Math.max(32, Math.min(58, rows));
+  while (cols * rows > 7600 && cols > 72) cols -= 2;
+  rows = Math.max(32, Math.min(58, Math.round(h / (w / cols / CELL_ASPECT))));
+  while (cols * rows > 7600 && rows > 32) rows -= 1;
   return { cols, rows };
 }
 
@@ -240,7 +218,17 @@ export function poseParams(pose, timeMs = 0, opts = {}) {
     }
   }
 
-  if (!reduce) base.x += Math.sin(time * 0.0016) * scuttleAmp(phase);
+  const chase = reduce ? 0 : Number(opts.chaseX) || 0;
+  const bite = reduce ? 0 : Number(opts.bite) || 0;
+  const hit = impact + bite;
+  const step = reduce ? 0 : Math.sin(time * 0.014);
+  const squish = hit * 0.72;
+  base.squashX = (1 + squish) * (1 + Math.max(0, step) * 0.06);
+  base.squashY = (1 / (1 + squish)) * (1 + Math.max(0, -step) * 0.06);
+  base.x += chase;
+  if (!reduce) base.y += Math.abs(Math.sin(time * 0.013)) * 0.028;
+  if (!reduce && opts.lookAt != null) base.lookX = Number(opts.lookAt) || base.lookX;
+  if (!reduce && hit > 0.45) base.rot += Math.sin(time * 0.02) * hit * 0.28;
   if (phase === "moral" || phase === "encore") base.y -= 0.06;
   const clap = clamp01(flourish);
   base.clawOpen = clamp01(base.clawOpen * (1 - clap * 0.82));
@@ -275,13 +263,19 @@ function localToWorld(lx, ly, pose) {
 function clawDistance(x, y, side, pose) {
   const mx = x * side;
   const spread = pose.clawSpread;
-  const palmX = 0.78 + spread * 0.05;
-  const palmY = 0.16 + pose.clawLift;
-  const gap = 0.06 + pose.clawOpen * 0.34;
-  let d = sdSegment(mx, y, 0.36, 0.02, palmX, palmY, 0.11);
-  d = Math.min(d, sdCircle(mx - palmX, y - palmY, 0.16));
-  d = Math.min(d, sdSegment(mx, y, palmX - 0.04, palmY + 0.02, palmX + 0.4, palmY + gap, 0.075));
-  d = Math.min(d, sdSegment(mx, y, palmX - 0.04, palmY - 0.02, palmX + 0.36, palmY - gap * 0.7, 0.07));
+  const palmX = 0.74 + spread * 0.04;
+  const palmY = 0.1 + pose.clawLift;
+  const gap = 0.07 + pose.clawOpen * 0.3;
+  let d = sdSegment(mx, y, 0.34, 0.02, palmX * 0.86, palmY, 0.09);
+  d = smoothMin(d, sdCircle(mx - palmX, y - palmY, 0.15), 0.06);
+  const ux = palmX + 0.34;
+  const uy = palmY + gap;
+  d = Math.min(d, sdSegment(mx, y, palmX - 0.02, palmY, ux, uy, 0.062));
+  d = Math.min(d, sdCircle(mx - ux, y - uy, 0.085));
+  const lx = palmX + 0.3;
+  const ly = palmY - gap * 0.72;
+  d = Math.min(d, sdSegment(mx, y, palmX - 0.02, palmY, lx, ly, 0.058));
+  d = Math.min(d, sdCircle(mx - lx, y - ly, 0.08));
   return d;
 }
 
@@ -292,7 +286,12 @@ function legDistance(x, y, side, pose) {
   for (let i = 0; i < LEGS.length; i++) {
     const leg = LEGS[i];
     const bob = Math.sin(pose.time * 0.004 + leg.ph + (side > 0 ? 0.7 : 0)) * amp;
-    const d = sdSegment(mx, y, leg.x0, leg.y0, leg.x1, leg.y1 + bob, leg.w);
+    const jointX = leg.xm;
+    const jointY = leg.ym + bob * 0.4;
+    let d = sdSegment(mx, y, leg.x0, leg.y0, jointX, jointY, leg.w);
+    d = Math.min(d, sdCircle(mx - jointX, y - jointY, leg.w * 1.35));
+    d = Math.min(d, sdSegment(mx, y, jointX, jointY, leg.x1, leg.y1 + bob, leg.w * 0.85));
+    d = Math.min(d, sdCircle(mx - leg.x1, y - (leg.y1 + bob), leg.w * 0.7));
     if (d < best) best = d;
   }
   return best;
@@ -318,8 +317,9 @@ function eyeField(x, y, pose) {
 
 export function crabSdf(x, y, pose) {
   const sx = x + y * (pose.lean || 0);
-  let shell = sdEllipse(sx, y, 0.64, 0.4);
-  shell = smoothMin(shell, sdEllipse(sx, y + 0.08, 0.4, 0.2), 0.08);
+  let shell = sdEllipse(sx, y - 0.02, 0.56, 0.32);
+  shell = smoothMin(shell, sdCircle(sx * 0.92, y + 0.08, 0.34), 0.16);
+  shell = smoothMin(shell, sdEllipse(sx, y + 0.02, 0.32, 0.16), 0.1);
   if (pose.scar) {
     const cut = sdSegment(sx, y, -0.02, 0.14, 0.34, -0.12, 0.02);
     shell = Math.max(shell, -cut);
@@ -350,13 +350,10 @@ export function crabSdf(x, y, pose) {
   return { d: best, mat };
 }
 
-function crabNormal(x, y, pose, hit) {
-  if (hit.d < -0.06 && hit.mat !== "eye" && hit.mat !== "pupil") {
-    return normalize(x, y - 0.02);
-  }
-  const e = 0.02;
-  const dx = crabSdf(x + e, y, pose).d - hit.d;
-  const dy = crabSdf(x, y + e, pose).d - hit.d;
+function crabNormal(x, y, pose) {
+  const e = 0.018;
+  const dx = crabSdf(x + e, y, pose).d - crabSdf(x - e, y, pose).d;
+  const dy = crabSdf(x, y + e, pose).d - crabSdf(x, y - e, pose).d;
   return normalize(dx, dy);
 }
 
@@ -386,21 +383,8 @@ function centerCol(cols, text) {
   return Math.max(0, Math.floor((cols - String(text || "").length) / 2));
 }
 
-function glyphForLuma(luma, diet) {
-  const source = diet || ".";
-  const i = Math.round(clamp01(luma) * (source.length - 1));
-  return source[Math.max(0, Math.min(source.length - 1, i))];
-}
-
-function edgeChar(nx, ny, diet) {
-  const ax = Math.abs(nx);
-  const ay = Math.abs(ny);
-  let want = "-";
-  if (ax > ay * 1.4) want = "|";
-  else if (ay > ax * 1.4) want = "-";
-  else want = nx * ny < 0 ? "/" : "\\";
-  if (diet.includes(want)) return want;
-  return glyphForLuma(0.92, diet);
+function sortedDiet(growth, ink) {
+  return sortByInk(growth.diet, ink);
 }
 
 function darken(rgb, t = 0.32) {
@@ -451,12 +435,8 @@ function paintWater(cells, state, palette, growth) {
       let bg = null;
       let role = "sea";
 
-      if ((state.template === "spotlight" || phase === "hook") && Math.abs(world.x) < 0.7 && world.y > -0.2) {
-        bg = mixRgb(palette.sea, [0.16, 0.18, 0.22], 0.55);
-      }
-
       const side = Math.min(c, cols - 1 - c);
-      if (phase !== "hook" && side < 3) {
+      if (phase !== "hook" && side < 3 && r > 7 && r < band - 1) {
         const sway = reduce ? 0 : Math.round(Math.sin(t * 0.8 + r * 0.25) * 0.8);
         if (c === sway || c === cols - 1 + sway) {
           ch = diet.includes("|") ? "|" : diet.includes(":") ? ":" : ".";
@@ -473,10 +453,10 @@ function paintWater(cells, state, palette, growth) {
 
       const deepLine = Math.floor(rows * 0.7);
       if ((phase === "craft" || phase === "moral" || phase === "encore") && (r === deepLine || r === deepLine - 2)) {
-        if (c % 3 === 0) {
-          const pick = r === deepLine ? Math.min(diet.length - 1, 8) : Math.min(diet.length - 1, 4);
-          ch = diet[pick] || diet[0];
-          fg = mixRgb(palette.fog, palette.accent, phase === "encore" ? 0.45 : 0.22);
+        if (c % 4 === 0) {
+          const tones = sortByInk(diet, state.ink);
+          ch = tones[r === deepLine ? Math.min(2, tones.length - 1) : 0] || ".";
+          fg = mixRgb(palette.fog, palette.accent, phase === "encore" ? 0.35 : 0.16);
           role = "depth";
         }
       }
@@ -501,28 +481,65 @@ function paintWater(cells, state, palette, growth) {
   }
 }
 
-function paintFood(cells, state, palette, growth, pose) {
+function morselGlyphs(growth) {
+  const upcoming = SHADE_ORDER.slice(growth.diet.length, growth.diet.length + 5);
+  return upcoming.length ? [...upcoming] : ["@", "o", "*", "#"];
+}
+
+export function morselPositions(time, reduce, glyphs) {
+  const list = glyphs && glyphs.length ? glyphs : ["o"];
+  const t = reduce ? 0.42 : ((Number(time) || 0) % 7000) / 7000;
+  const sweep = reduce ? 0 : Math.sin((Number(time) || 0) * 0.00145);
+  return list.map((ch, i) => {
+    const span = 2.5;
+    const x = -1.25 + ((i + 0.5) / list.length) * span + sweep * (0.55 + i * 0.06);
+    const fall = reduce ? 0.18 + i * 0.12 : (t * (0.9 + i * 0.04) + i * 0.17) % 1;
+    return {
+      ch,
+      x: Math.max(-1.45, Math.min(1.45, x)),
+      y: 1.05 - fall * 1.95,
+    };
+  });
+}
+
+export function followFood(morsels, time, reduce) {
+  if (reduce || !morsels || !morsels.length) return { x: 0, bite: 0, look: 0.15 };
+  let best = morsels[0];
+  let score = 1e9;
+  for (let i = 0; i < morsels.length; i++) {
+    const morsel = morsels[i];
+    const s = Math.abs(morsel.y - 0.18) * 1.7 + Math.abs(morsel.x) * 0.02;
+    if (s < score) {
+      score = s;
+      best = morsel;
+    }
+  }
+  const roam = Math.sin((Number(time) || 0) * 0.0015) * 1.2;
+  const x = Math.max(-1.35, Math.min(1.35, best.x * 0.8 + roam * 0.38));
+  const dx = Math.abs(x - best.x);
+  const dy = Math.abs(best.y - 0.18);
+  const close = Math.max(0, 1 - dx / 0.2) * Math.max(0, 1 - dy / 0.14);
+  return {
+    x,
+    bite: close > 0.75 ? close * 0.5 : 0,
+    look: Math.max(-1, Math.min(1, (best.x - x) * 1.6)),
+  };
+}
+
+function paintFood(cells, state, palette, pose, morsels) {
   const cols = cells[0].length;
   const rows = cells.length;
-  const diet = growth.diet;
-  const upcoming = SHADE_ORDER.slice(diet.length, diet.length + 6);
-  const treats = upcoming.length ? upcoming : ["@", "o", "*", "#"];
-  const reduce = Boolean(state.reduceMotion);
-  const t = reduce ? 0.35 : ((Number(state.time) || 0) % 24000) / 24000;
   let caught = false;
   const fg = mixRgb(palette.hi, palette.accent, 0.35);
-  for (let i = 0; i < treats.length; i++) {
-    const x = Math.sin(i * 1.7 + 0.6) * 1.05;
-    const fall = reduce ? 0.15 + i * 0.08 : (t * (0.45 + i * 0.08) + i * 0.17) % 1;
-    const y = 1.05 - fall * 1.85;
-    const local = worldToLocal(x, y, pose);
-    const inside = crabSdf(local.x, local.y, pose).d < 0.04;
-    if (inside) {
+  for (let i = 0; i < morsels.length; i++) {
+    const morsel = morsels[i];
+    const local = worldToLocal(morsel.x, morsel.y, pose);
+    if (crabSdf(local.x, local.y, pose).d < 0.05) {
       caught = true;
       continue;
     }
-    const cell = worldToCell(x, y, cols, rows, state.aspect || CELL_ASPECT);
-    put(cells, cell.col, cell.row, treats[i], fg, mixRgb(palette.sea, palette.hi, 0.2), "food");
+    const cell = worldToCell(morsel.x, morsel.y, cols, rows, state.aspect || CELL_ASPECT);
+    put(cells, cell.col, cell.row, morsel.ch, fg, null, "food");
   }
   return caught;
 }
@@ -533,34 +550,35 @@ function paintSigns(cells, state, palette, growth) {
   const img = state.imagery || {};
   const fg = palette.sign;
   const hud = mixRgb(palette.fog, palette.hi, 0.35);
+  const sideRow = 14;
   const label = `${growth.glyphCount}/${growth.glyphTotal} glyphs  ${growth.hueCount} hues`;
   writeString(cells, label, centerCol(cols, label), 0, hud, null);
 
   if (state.episodeMark && state.template !== "curtain") {
-    writeString(cells, String(state.episodeMark), 2, 2, fg, null);
+    writeString(cells, String(state.episodeMark), 2, sideRow, fg, null);
   }
   if (img.wall && state.template !== "curtain") {
     const labelWall = String(img.wall).slice(0, 16);
-    writeString(cells, labelWall, cols - labelWall.length - 2, 2, fg, null);
+    writeString(cells, labelWall, Math.max(2, cols - 3 - labelWall.length), sideRow, fg, null);
   }
   if (img.badge) {
     const badge = `[${img.badge}]`;
-    writeString(cells, badge, cols - badge.length - 2, 4, palette.accent, null);
+    writeString(cells, badge, Math.max(2, cols - 3 - badge.length), sideRow + 2, palette.accent, null);
   }
   if (img.burst) {
     const burst = String(img.burst);
-    writeString(cells, burst, centerCol(cols, burst), 3, palette.accent, null);
+    writeString(cells, burst, centerCol(cols, burst), 1, palette.accent, null);
   }
   if (img.title) {
-    writeString(cells, String(img.title), cols - String(img.title).length - 2, 3, fg, null);
+    writeString(cells, String(img.title), Math.max(2, cols - 3 - String(img.title).length), sideRow + 2, fg, null);
   }
   if (img.footer) {
     const foot = String(img.footer);
-    writeString(cells, foot, centerCol(cols, foot), Math.min(rows - 1, Math.floor(rows * 0.84)), fg, null);
+    writeString(cells, foot, centerCol(cols, foot), 2, fg, null);
   }
   if (state.template === "curtain") {
     const title = "CURTAIN";
-    writeString(cells, title, centerCol(cols, title), 2, palette.hi, null);
+    writeString(cells, title, centerCol(cols, title), 1, palette.hi, null);
   }
 }
 
@@ -580,27 +598,54 @@ function paintAudience(cells, state, palette, growth) {
   }
 }
 
-function shadeCrab(hit, normal, local, growth, palette, col, row) {
+function shadeCrab(hit, normal, local, growth, palette, col, row, ink) {
   const ndotl = Math.max(0, normal.x * LIGHT.x + normal.y * LIGHT.y);
-  const luma = 0.28 + ndotl * 0.72;
-  const diet = growth.diet;
+  const luma = 0.22 + ndotl * 0.78;
+  const tones = sortedDiet(growth, ink);
   if (hit.mat === "pupil") {
-    const ch = diet.includes("@") ? "@" : diet.includes("*") ? "*" : "o";
-    return { ch, fg: [0.05, 0.06, 0.08], bg: [0.93, 0.95, 0.92], luma: 0.15 };
+    const ch = tones.includes("@") ? "@" : tones.includes("*") ? "*" : "o";
+    return { ch, fg: [0.04, 0.05, 0.07], bg: [0.92, 0.94, 0.9], luma: 0.1, role: "crab" };
   }
   if (hit.mat === "eye") {
-    const ch = diet.includes("O") ? "O" : "o";
-    return { ch, fg: [0.08, 0.09, 0.1], bg: [0.9, 0.93, 0.88], luma: 0.9 };
+    const ch = tones.includes("O") ? "O" : "o";
+    return { ch, fg: [0.06, 0.07, 0.08], bg: [0.9, 0.93, 0.88], luma: 0.92, role: "crab" };
   }
-  const edge = hit.d > -0.028;
-  const bg = shellColor(local, luma, growth.hues);
-  const fg = darken(bg, hit.mat === "claw" ? 0.22 : 0.3);
-  let ch = edge ? edgeChar(normal.x, normal.y, diet) : glyphForLuma(luma, diet);
-  if (hit.mat === "leg") {
-    const seg = diet.includes("=") && col % 3 === 0 ? "=" : ch;
-    ch = seg;
+  const tone = shellColor(local, luma, growth.hues);
+  const fg = [0.16 + tone[0] * 0.84, 0.16 + tone[1] * 0.84, 0.18 + tone[2] * 0.82];
+  const edge = hit.d > -0.016;
+  let ch = edge ? edgeFromDiet(normal.x, normal.y, tones) : shadeGlyph(luma, tones, col, row);
+  if (!edge) {
+    const speck = vocabularyFreckle(growth.diet, ch, col, row);
+    if (speck) ch = speck;
+    else if (cellHash(col * 3, row * 7) > 0.992) {
+      const trophy = trophyLetter(growth.diet, col, row);
+      if (trophy) ch = trophy;
+    }
   }
-  return { ch, fg, bg, luma };
+  return { ch, fg, bg: null, luma, role: "crab" };
+}
+
+function rimBraille(world, pose, cols, rows, aspect) {
+  const xSpan = (cols / rows) * aspect * VIEW_H;
+  const dx = xSpan / cols;
+  const dy = VIEW_H / rows;
+  const xs = [-0.27, 0.27];
+  const ys = [-0.38, -0.13, 0.13, 0.38];
+  let mask = 0;
+  let inside = 0;
+  let i = 0;
+  for (let sx = 0; sx < xs.length; sx++) {
+    for (let sy = 0; sy < ys.length; sy++) {
+      const local = worldToLocal(world.x + xs[sx] * dx, world.y - ys[sy] * dy, pose);
+      if (crabSdf(local.x, local.y, pose).d < 0) {
+        mask |= BRAILLE_DOTS[i];
+        inside += 1;
+      }
+      i += 1;
+    }
+  }
+  if (inside === 0 || inside > 3) return "";
+  return brailleFromMask(mask);
 }
 
 function paintGrain(cells, local, hit, growth, col, row, cols, rows) {
@@ -640,13 +685,27 @@ function paintCrab(cells, state, palette, growth, pose) {
       if (hit.d > 0) continue;
       const morph = state.morphT == null ? 1 : clamp01(state.morphT);
       if (morph < 0.999 && cellHash(c * 3 + 1, r * 5) > morph) continue;
-      const normal = crabNormal(local.x, local.y, pose, hit);
-      const shaded = shadeCrab(hit, normal, local, growth, palette, c, r);
+      const aspect = state.aspect || CELL_ASPECT;
+      if (hit.d > -0.02 && hit.mat !== "eye" && hit.mat !== "pupil") {
+        const braille = rimBraille(world, pose, cols, rows, aspect);
+        if (braille && braille !== "⠀") {
+          const tone = shellColor(local, 0.72, growth.hues);
+          cells[r][c] = {
+            ch: braille,
+            fg: [0.2 + tone[0] * 0.8, 0.2 + tone[1] * 0.8, 0.22 + tone[2] * 0.78],
+            bg: null,
+            role: "rim",
+          };
+          continue;
+        }
+      }
+      const normal = crabNormal(local.x, local.y, pose);
+      const shaded = shadeCrab(hit, normal, local, growth, palette, c, r, state.ink);
       let fg = shaded.fg;
       let bg = shaded.bg;
       if (hot) {
         fg = mixRgb(fg, hot, 0.45);
-        bg = mixRgb(bg, hot, 0.28);
+        if (bg) bg = mixRgb(bg, hot, 0.28);
       }
       let ch = shaded.ch;
       if (pose.flourish > 0.2 && hit.mat === "claw" && cellHash(c, r) > 0.72) {
@@ -689,6 +748,8 @@ export function renderGlyphField(state = {}) {
   const time = Number(state.time) || 0;
   const frame = Number(state.frame) || 0;
   const impact = playing ? impactAmount(phaseId, frame, time, reduce) : 0;
+  const morsels = playing ? morselPositions(time, reduce, morselGlyphs(growth)) : [];
+  const follow = followFood(morsels, time, reduce);
   const pose = playing
     ? poseParams(state.pose || "proud", time, {
         reduceMotion: reduce,
@@ -696,6 +757,9 @@ export function renderGlyphField(state = {}) {
         phase: phaseId,
         fraction: growth.fraction,
         impact,
+        chaseX: follow.x,
+        bite: follow.bite,
+        lookAt: follow.look,
       })
     : null;
   const cells = Array.from({ length: rows }, () => Array.from({ length: cols }, emptyCell));
@@ -708,7 +772,7 @@ export function renderGlyphField(state = {}) {
   };
   paintWater(cells, scene, palette, growth);
   if (playing && pose) {
-    const caught = paintFood(cells, scene, palette, growth, pose);
+    const caught = paintFood(cells, scene, palette, pose, morsels);
     if (caught) {
       pose.happy = Math.max(pose.happy, 0.85);
       pose.clawOpen = clamp01(pose.clawOpen * 0.15);
@@ -789,7 +853,7 @@ export function crabSpanFraction(field) {
   for (let r = 0; r < grid.length; r++) {
     const row = grid[r];
     for (let c = 0; c < row.length; c++) {
-      if (row[c].role === "crab" || row[c].role === "grain" || row[c].role === "pearl") {
+      if (row[c].role === "crab" || row[c].role === "rim" || row[c].role === "grain" || row[c].role === "pearl") {
         if (r < minR) minR = r;
         if (r > maxR) maxR = r;
       }

@@ -28,6 +28,12 @@ asciinema-player (GPL-3.0) and play.core / ertdfgcvb experiments
 Bayer 4×4 ordered dither
   Public-domain threshold matrix, used to keep ramp bands from posterizing.
 
+Measured ink
+  Each printable glyph is drawn into an offscreen cell and the lit pixels
+  are counted (DejaVu Sans Mono, baked in js/glyph-coverage.mjs, remeasured
+  on the live canvas). The diet is sorted by that coverage so luminance
+  picks a tone. Letters the crab has eaten appear only as rare freckles.
+
 Geryon himself is a signed-distance crab (shell, claws, legs, stalks, eyes)
 lit from one direction and resampled into the grid each frame. The growth
 diet, bruise colors, and the point-grid morph between scenes are original.

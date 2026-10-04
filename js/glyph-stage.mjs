@@ -5,6 +5,7 @@
  */
 
 import { CELL_ASPECT, flowFields, gridForViewport, renderGlyphField } from "./crab-field.mjs";
+import { measureInkOnContext } from "./glyph-coverage.mjs";
 import { clamp01 } from "./glyph-ramp.mjs";
 import { rgbCss } from "./phase-color.mjs";
 
@@ -75,6 +76,24 @@ export function createGlyphStage(canvas, ctx) {
   let settled = null;
   let from = null;
   let prevMorph = 1;
+  let ink = null;
+  function ensureInk() {
+    if (ink) return ink;
+    const canvas = ctx.canvas;
+    const doc = canvas && canvas.ownerDocument;
+    if (!doc || typeof doc.createElement !== "function") return null;
+    const off = doc.createElement("canvas");
+    off.width = 32;
+    off.height = 40;
+    const measure = off.getContext("2d", { willReadFrequently: true });
+    if (!measure) return null;
+    try {
+      ink = measureInkOnContext(measure, FONT, 28);
+    } catch {
+      ink = null;
+    }
+    return ink;
+  }
   return {
     grid() {
       return { cols, rows, aspect };
@@ -95,6 +114,7 @@ export function createGlyphStage(canvas, ctx) {
         cols,
         rows,
         aspect,
+        ink: ensureInk(),
       });
       const morph = state.reduceMotion ? 1 : state.morphT == null ? 1 : state.morphT;
       if (morph < prevMorph - 0.08) from = settled;
