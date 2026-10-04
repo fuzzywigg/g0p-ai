@@ -1,0 +1,39 @@
+Glyph theater — technique notes
+================================
+
+The character grid in js/glyph-ramp.mjs, js/phase-color.mjs, js/crab-field.mjs,
+and js/glyph-stage.mjs is original code. No third-party renderer source is
+vendored. The ideas below are well-known and were reimplemented here.
+
+aalib (LGPL-2.0-or-later) and libcaca (WTFPL)
+  Brightness-to-glyph ramps, and fg/bg pairs so a cell's perceived tone is
+  ink coverage times foreground plus the rest times background.
+
+chafa (LGPL-3.0-or-later)
+  Picking among density, block, and braille sets: braille for sparse
+  deep-sea specks, blocks for the craft hatch, a density ramp for the shell.
+
+Acerola, "I Tried Turning a 3D Game into ASCII Art" (2023), public video essay
+  Split edge from fill. The surface normal chooses a stroke glyph; the lit
+  interior stays on the brightness ramp. No shader source was copied.
+
+cool-retro-term (GPL-3.0)
+  Only the idea of a faint glow on the glyph buffer in the encore. This is
+  not a terminal emulator and does not include that project's shaders.
+
+asciinema-player (GPL-3.0) and play.core / ertdfgcvb experiments
+  A cell grid with its own foreground and background, advanced over time,
+  rather than a bitmap of the picture. No player source is included.
+
+Bayer 4×4 ordered dither
+  Public-domain threshold matrix, used to keep ramp bands from posterizing.
+
+Measured ink
+  Each printable glyph is drawn into an offscreen cell and the lit pixels
+  are counted (DejaVu Sans Mono, baked in js/glyph-coverage.mjs, remeasured
+  on the live canvas). The diet is sorted by that coverage so luminance
+  picks a tone. Letters the crab has eaten appear only as rare freckles.
+
+Geryon himself is a signed-distance crab (shell, claws, legs, stalks, eyes)
+lit from one direction and resampled into the grid each frame. The growth
+diet, bruise colors, and the point-grid morph between scenes are original.
