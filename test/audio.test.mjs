@@ -20,7 +20,7 @@ const root = join(dirname(fileURLToPath(import.meta.url)), "..");
 
 function walk(dir, found = []) {
   for (const name of readdirSync(dir)) {
-    if (name === "node_modules" || name === ".git") continue;
+    if (name === "node_modules" || name === ".git" || name === "public" || name === ".vercel") continue;
     const path = join(dir, name);
     const stat = statSync(path);
     if (stat.isDirectory()) walk(path, found);

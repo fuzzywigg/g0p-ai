@@ -96,6 +96,77 @@
       opacity: 0;
       transform: translateY(-0.65rem);
     }
+    #stage-ui {
+      position: fixed;
+      inset: 0;
+      z-index: 4;
+      pointer-events: none;
+    }
+    #catalog {
+      position: absolute;
+      top: calc(0.85rem + env(safe-area-inset-top));
+      left: calc(0.9rem + env(safe-area-inset-left));
+      pointer-events: auto;
+      max-width: min(22rem, calc(100vw - 2rem));
+    }
+    #catalog .catalog-label,
+    #speech-controls .voice-label,
+    #speech-status {
+      margin: 0 0 0.35rem;
+      letter-spacing: 0.28em;
+      text-indent: 0.28em;
+      font-size: 0.62rem;
+      text-transform: lowercase;
+      color: var(--mute);
+    }
+    #episode-list {
+      margin: 0;
+      padding: 0;
+      list-style: none;
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 0.28rem;
+    }
+    #episode-list button {
+      display: block;
+      width: 100%;
+      text-align: left;
+      background: rgba(0, 0, 0, 0.55);
+      color: var(--caption);
+      border: 1px solid rgba(255, 255, 255, 0.18);
+      padding: 0.45rem 0.6rem;
+      font: inherit;
+      font-size: 0.72rem;
+      letter-spacing: 0.04em;
+      cursor: pointer;
+    }
+    #episode-list button[aria-current="true"] {
+      border-color: rgba(255, 255, 255, 0.55);
+    }
+    #speech-controls {
+      position: absolute;
+      top: calc(0.85rem + env(safe-area-inset-top));
+      right: calc(0.9rem + env(safe-area-inset-right));
+      pointer-events: auto;
+      display: flex;
+      flex-direction: column;
+      align-items: flex-end;
+      gap: 0.35rem;
+    }
+    #mute-toggle,
+    #voice-picker {
+      font: inherit;
+      font-size: 0.72rem;
+      color: var(--caption);
+      background: rgba(0, 0, 0, 0.55);
+      border: 1px solid rgba(255, 255, 255, 0.18);
+      padding: 0.35rem 0.55rem;
+    }
+    #voice-picker { max-width: 14rem; }
+    #mute-toggle { cursor: pointer; letter-spacing: 0.12em; text-transform: lowercase; }
+    html[data-speech="off"] #speech-status,
+    html[data-speech="muted"] #speech-status { display: block; }
+    #speech-status { display: none; }
     @media (prefers-reduced-motion: reduce) {
       #hint { animation: none; opacity: 0.55; }
       #captions, #captions.in, #captions.out {
@@ -109,6 +180,19 @@
   <h1>The Ratchet That Never Turned</h1>
   <canvas id="field" aria-label="Pointillism field. Click to begin episode 0006. Geryon the crab tells the fable."></canvas>
   <div id="hint">click</div>
+  <div id="stage-ui">
+    <nav id="catalog" aria-label="Hub-approved public episodes">
+      <p class="catalog-label">episodes</p>
+      <ul id="episode-list"></ul>
+    </nav>
+    <div id="speech-controls">
+      <button type="button" id="mute-toggle" aria-pressed="false">mute</button>
+      <label class="voice-label">voice
+        <select id="voice-picker" aria-label="Voice"></select>
+      </label>
+      <p id="speech-status">captions only</p>
+    </div>
+  </div>
   <div id="caption-wrap">
     <p id="captions" aria-live="polite"></p>
   </div>
@@ -659,7 +743,100 @@ phase: encore
     return Math.min(12000, Math.max(2800, ms));
   }
 
-  // keep in sync with js/speech.mjs
+  // keep in sync with js/catalog.mjs
+  var EXCLUDED_EPISODE_ID = "0005";
+  var HUB_APPROVED_PUBLIC_BANK = [
+    {
+      id: "0006",
+      title: "The Ratchet That Never Turned",
+      source: "https://www.fuzzywigg.ai/aesop/the-ratchet-that-never-turned",
+      hubApproved: true,
+      public: true
+    }
+  ];
+  function normalizeEpisodeId(id) {
+    var raw = String(id == null ? "" : id).trim();
+    if (!raw) return "";
+    var digits = raw.replace(/^#/, "").match(/(\d{3,5})/);
+    if (digits) return ("0000" + digits[1]).slice(-4);
+    return raw;
+  }
+  function isHardExcludedEpisode(id) {
+    return normalizeEpisodeId(id) === EXCLUDED_EPISODE_ID;
+  }
+  function listHubApprovedPublicEpisodes(bank) {
+    var entries = Array.isArray(bank) ? bank : HUB_APPROVED_PUBLIC_BANK;
+    return entries.filter(function (ep) {
+      if (!ep || ep.hubApproved !== true || ep.public !== true) return false;
+      if (isHardExcludedEpisode(ep.id)) return false;
+      return true;
+    });
+  }
+
+  // keep in sync with js/speech.mjs — free browser SpeechSynthesis only, no paid TTS
+  var MUTE_STORAGE_KEY = "g0p-ai-mute";
+  var VOICE_STORAGE_KEY = "g0p-ai-voice";
+  function storageOrNull() {
+    try { return window.localStorage; } catch (err) { return null; }
+  }
+  function readStoredMute(storage) {
+    try { return storage && storage.getItem(MUTE_STORAGE_KEY) === "1"; } catch (err) { return false; }
+  }
+  function writeStoredMute(storage, muted) {
+    try { if (storage) storage.setItem(MUTE_STORAGE_KEY, muted ? "1" : "0"); } catch (err) {}
+  }
+  function readStoredVoiceURI(storage) {
+    try { return storage ? String(storage.getItem(VOICE_STORAGE_KEY) || "") : ""; } catch (err) { return ""; }
+  }
+  function writeStoredVoiceURI(storage, uri) {
+    try {
+      if (!storage) return;
+      var value = String(uri || "");
+      if (!value) storage.removeItem(VOICE_STORAGE_KEY);
+      else storage.setItem(VOICE_STORAGE_KEY, value);
+    } catch (err) {}
+  }
+  function listVoices(voices) {
+    if (!voices || !voices.length) return [];
+    var out = [];
+    var i;
+    for (i = 0; i < voices.length; i++) if (voices[i]) out.push(voices[i]);
+    return out;
+  }
+  function voiceKey(voice) {
+    if (!voice) return "";
+    return String(voice.voiceURI || voice.name || "");
+  }
+  function pickVoice(voices, preferredURI) {
+    var list = listVoices(voices);
+    var want = String(preferredURI || "");
+    var i;
+    if (want) {
+      for (i = 0; i < list.length; i++) {
+        if (voiceKey(list[i]) === want) return list[i];
+      }
+    }
+    return pickEnglishVoice(list);
+  }
+  function attachVoicesChanged(synth, onChange) {
+    if (typeof onChange !== "function") return function () {};
+    function handler() {
+      var voices = synth && typeof synth.getVoices === "function" ? synth.getVoices() : [];
+      onChange(listVoices(voices));
+    }
+    if (synth && typeof synth.addEventListener === "function") {
+      synth.addEventListener("voiceschanged", handler);
+      handler();
+      return function () {
+        if (typeof synth.removeEventListener === "function") synth.removeEventListener("voiceschanged", handler);
+      };
+    }
+    if (synth) synth.onvoiceschanged = handler;
+    handler();
+    return function () {
+      if (synth && synth.onvoiceschanged === handler) synth.onvoiceschanged = null;
+    };
+  }
   function pickEnglishVoice(voices) {
     if (!voices || !voices.length) return null;
     var list = [];
@@ -1004,11 +1181,14 @@ phase: encore
     return Boolean(synth && typeof synth.speak === "function" && typeof window.SpeechSynthesisUtterance === "function");
   }
 
+  var selectedVoiceURI = readStoredVoiceURI(storageOrNull());
+  var muted = readStoredMute(storageOrNull());
+
   function speakCaption(text, opts) {
     opts = opts || {};
     return new Promise(function (resolve) {
-      if (!speechIsAvailable()) {
-        document.documentElement.dataset.speech = "off";
+      if (muted || !speechIsAvailable()) {
+        document.documentElement.dataset.speech = muted ? "muted" : "off";
         resolve(false);
         return;
       }
@@ -1030,7 +1210,7 @@ phase: encore
         if (settled) return;
         var u = new window.SpeechSynthesisUtterance(String(text || ""));
         currentUtterance = u;
-        var voice = pickEnglishVoice(synth.getVoices());
+        var voice = pickVoice(synth.getVoices(), selectedVoiceURI);
         u.rate = 1;
         u.pitch = 1;
         if (voice) {
@@ -1417,6 +1597,11 @@ phase: encore
   var canvas = document.getElementById("field");
   var captionsEl = document.getElementById("captions");
   var hintEl = document.getElementById("hint");
+  var episodeListEl = document.getElementById("episode-list");
+  var muteToggle = document.getElementById("mute-toggle");
+  var voicePicker = document.getElementById("voice-picker");
+  var speechStatus = document.getElementById("speech-status");
+  var stageUi = document.getElementById("stage-ui");
   var ctx = canvas.getContext("2d", { alpha: false });
   var dpr = Math.max(1, Math.min(2, window.devicePixelRatio || 1));
   var particles = [];
@@ -1438,6 +1623,57 @@ phase: encore
   var dreamFlash = null;
   var dreamPoints = [];
   var morphPeakArmed = false;
+
+  function syncMuteButton() {
+    muteToggle.setAttribute("aria-pressed", muted ? "true" : "false");
+    muteToggle.textContent = muted ? "unmute" : "mute";
+    if (muted) document.documentElement.dataset.speech = "muted";
+    else if (!speechIsAvailable()) document.documentElement.dataset.speech = "off";
+    else document.documentElement.dataset.speech = "on";
+  }
+
+  function fillVoicePicker(voices) {
+    var list = listVoices(voices);
+    var current = pickVoice(list, selectedVoiceURI);
+    if (current) selectedVoiceURI = voiceKey(current);
+    voicePicker.innerHTML = "";
+    if (!list.length) {
+      var empty = document.createElement("option");
+      empty.value = "";
+      empty.textContent = "browser default";
+      voicePicker.appendChild(empty);
+      voicePicker.disabled = true;
+      return;
+    }
+    voicePicker.disabled = muted || !speechIsAvailable();
+    list.forEach(function (v) {
+      var opt = document.createElement("option");
+      opt.value = voiceKey(v);
+      opt.textContent = (v.name || "voice") + (v.lang ? " (" + v.lang + ")" : "");
+      if (current && voiceKey(v) === voiceKey(current)) opt.selected = true;
+      voicePicker.appendChild(opt);
+    });
+  }
+
+  function renderCatalog() {
+    var listed = listHubApprovedPublicEpisodes();
+    episodeListEl.innerHTML = "";
+    listed.forEach(function (ep) {
+      if (isHardExcludedEpisode(ep.id)) return;
+      var li = document.createElement("li");
+      var btn = document.createElement("button");
+      btn.type = "button";
+      btn.textContent = ep.id + " — " + ep.title;
+      btn.dataset.episode = ep.id;
+      if (ep.id === episode.episode) btn.setAttribute("aria-current", "true");
+      btn.addEventListener("click", function (e) {
+        e.stopPropagation();
+        if (ep.id === episode.episode) start();
+      });
+      li.appendChild(btn);
+      episodeListEl.appendChild(li);
+    });
+  }
 
   function resize() {
     w = window.innerWidth;
@@ -1831,6 +2067,10 @@ phase: encore
     else document.documentElement.dataset.state = "done";
   }
 
+  function applyNarrationMute() {
+    if (activeAudio) activeAudio.muted = muted;
+  }
+
   function playAudioNarration(entry) {
     var audio = new Audio();
     audioSession = {
@@ -1841,6 +2081,7 @@ phase: encore
       clock: -1
     };
     activeAudio = audio;
+    audio.muted = muted;
     audio.preload = "auto";
 
     audio.addEventListener("loadedmetadata", function () {
@@ -1945,7 +2186,7 @@ phase: encore
       captionsEl.textContent = lines[i];
       captionsEl.classList.remove("out");
       captionsEl.classList.add("in");
-      var source = speakStartSource({ canSpeak: speechIsAvailable() });
+      var source = speakStartSource({ canSpeak: speechIsAvailable() && !muted });
       var utteranceStarted = false;
       function flashSpeak(event) {
         if (shouldFireSpeakStartFlash({
@@ -2001,6 +2242,7 @@ phase: encore
   });
 
   function onActivate(e) {
+    if (e.target && e.target.closest && e.target.closest("#stage-ui")) return;
     if (e.type === "keydown" && e.key !== "Enter" && e.key !== " ") return;
     if (e.type === "keydown") e.preventDefault();
     start();
@@ -2015,15 +2257,32 @@ phase: encore
 
   window.addEventListener("pagehide", stopPlayback);
   canvas.setAttribute("tabindex", "0");
+  stageUi.addEventListener("click", function (e) { e.stopPropagation(); });
+  stageUi.addEventListener("keydown", function (e) { e.stopPropagation(); });
 
-  if (window.speechSynthesis && typeof window.speechSynthesis.getVoices === "function") {
-    window.speechSynthesis.getVoices();
-    if (typeof window.speechSynthesis.addEventListener === "function") {
-      window.speechSynthesis.addEventListener("voiceschanged", function () {
-        pickEnglishVoice(window.speechSynthesis.getVoices());
-      });
-    }
-  }
+  muteToggle.addEventListener("click", function (e) {
+    e.stopPropagation();
+    muted = !muted;
+    writeStoredMute(storageOrNull(), muted);
+    syncMuteButton();
+    fillVoicePicker(window.speechSynthesis && typeof window.speechSynthesis.getVoices === "function"
+      ? window.speechSynthesis.getVoices()
+      : []);
+    if (muted) cancelSpeech();
+    applyNarrationMute();
+  });
+
+  voicePicker.addEventListener("change", function (e) {
+    e.stopPropagation();
+    selectedVoiceURI = voicePicker.value;
+    writeStoredVoiceURI(storageOrNull(), selectedVoiceURI);
+  });
+
+  attachVoicesChanged(window.speechSynthesis, function (voices) {
+    fillVoicePicker(voices);
+  });
+  syncMuteButton();
+  renderCatalog();
 
   audioManifestPromise = loadAudioManifest().then(function (parsed) {
     audioManifest = parsed;
