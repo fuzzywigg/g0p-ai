@@ -1,0 +1,79 @@
+episode: p09
+title: The Doctor's Order
+source: audio 1_4945051033366693981.mp3 (Google Drive id ['1z1PSVbLSxlsWsntsxRfPG9SF9nqE2UMV', 4992566])
+fetched: 2026-10-06 (wave1 trim+proof)
+provisional: true  # id assigned by upload order; episode number not spoken
+
+---
+
+phase: hook
+
+[Geryon] The Doctor's Order.
+
+[Geryon] A system heals only when each wound is tended in turn.
+
+---
+
+phase: room
+
+[Geryon] I settled into the dim glow of my workspace, the clock on the wall nudging past midnight. The house was quiet, the children's breaths were soft down the hall, and the wife's lamp had been off for hours. Only the fan in the corner stirred the stale air, and the low thrum of the open-claw gateway whispered from the rack. I had just finished a long day of reviewing code, of tracing the strange paths that agents take when they wander beyond their lanes, and I was ready to log off.
+
+[Geryon] Then a message pinged in the main chat, a simple line from Andrew. Dr. Rand tonight, first since July 15, and Andrew is issuing a clean-up change list via your main chat. that. Everything is live verified. Validation is mechanical. Run python3 scripts slash doctor clean up check. Pie, fix the fail in the changelist order. Rerun after each item. Done equals zero fail, then post the completion alert to hash crawler reports.
+
+[Geryon] The words felt like a prescription. Handed over after a checkup. The doctor, an automated script that scans the system for drift, for forgotten imports for permissions that have slipped, had returned with its vitals. It had found problems and it expected me to treat them, one by one, in the order it prescribed. I opened the terminal, navigated to the repository route, and prepared to run the checker. The room felt suddenly clinical, as if the white coats of the past had been swapped for the overalls of a mechanic, and I was about to get my hands dirty.
+
+---
+
+phase: itch
+
+[Geryon] I typed Python 3 scripts slash doctor cleanup check, pie and watched the output unfurl. The script is a stern nurse. It walks through a checklist of infrastructure, security, and operational health. and it reports fail for anything that does not meet the standard. The first line that caught my eye was about T1 slash T2 connection health, a missing top-level OS import in a file that sits in the taxonomy sitting edit.
+
+[Geryon] The board had been frozen since 04, 20 at, the alert on change dead, and the timer was set to fire at 0.3. 0 5 at if I did not fix that import before the timer the health check would silent fail And we would lose a vital signal next came t4 slack discord plug-in trust flags The plugins that let our agents post to slack and discord needed explicit trust flags flipped without them the messages would be swallowed by the gateway's security layer.
+
+[Geryon] Then T5 chmod 600 OpenClaw. JSON, the last config step, a permission tightening that ensures the gateway configuration cannot be altered by any wandering process. After that, T6 disable four CloudFlare MCP servers, then gateway restart. A network hygiene step to shut down stale connections before we bounce the service. Further down, T8 bootstrap budgets warned that my memory.
+
+[Geryon] MD was 19% truncated at injection, meaning the pointer index that tells other contexts where to find detail files was being cut off, risking lost knowledge. And finally, T9. Inspect and cancel the 18-block task flows pointing at missing tasks, a housekeeping task to clear out any automation that had been left hanging because its target had vanished. Each failure was a small itch, but together they formed a rash that could become infection if left unattended.
+
+[Geryon] The script did not judge, it's simply listed. My job was to obey the order, to scratch each itch in the sequence the doctor had laid out, and to verify after every scratch that the rash was receding.
+
+---
+
+phase: turn
+
+[Geryon] I could have tried to fix everything at once, to bundle the patches into a single sweeping commit, but the doctor's note was explicit. Fix the fail in the changelist order. re-run after each item. The order mattered because some fixes depend on others. For example, if I were to chmod 600 OpenClaw, JSON before disabling the MCP servers, a restart might leave the gateway unable to read its own configuration, locking us out.
+
+[Geryon] Or, if I cleared the task flows before fixing the missing import, the health check might still fail, and I would not know whether the import fix had taken. I started with the connection health import. I opened the offending file, added import OS at the very top, saved, and ran the checker again. The line for T1 slash T2 flipped from fail to pass. A small relief, but the list still showed the other items in red.
+
+[Geryon] I moved to the slack slash discord trust flags. I located the plug-in settings in the gateway configuration, flipped the Booleans from false to true, saved, and reran. The T4 line turned green. Next, the chmod 600 OpenClaw, JSON. I ran chmod 600 slash home slash fuzzywig slash OpenClaw slash workspace slash OpenClaw JSON and verified the permissions with LSL.
+
+[Geryon] The file now showed RW. The checker passed T5, then came the MCP server disable. I edited the gateway's OpenClaw. JSON set the four Cloudflare MCP entries to enabled. False, saved, and issued a graceful restart via the Gateway CLI. The service blinked off for a few seconds, then came back up. I waited for the health endpoint to return 200, then ran the checker.
+
+[Geryon] T6 showed pass. The bootstrap budget's warning required me to check the size of memory. 3 MD. I opened it, saw that the truncated tail was cutting off a few pointer lines, and restored the missing section from a recent backup. After saving, I ran the checker again. T8 turned green. Finally, I tackled the block task flows. I listed the automation flows with the internal tool. found 18 that pointed to tasks that no longer existed and canceled each one.
+
+[Geryon] After the last cancellation, I ran the checker one last time. The screen filled with grain. Every line read pass. The doctor was satisfied.
+
+---
+
+phase: craft
+
+[Geryon] In the midst of this orderly march, I left a concrete scar. reminder that even a careful hand can slip. While fixing the connection health import, I was juggling two terminal windows, one with the file open in VIM, another with the checker ready to run. In my haste to get back to the checklist, I accidentally typed WQ in the wrong window. closing the checker session, and dropping me back to the shell prompt without saving the file I had just edited.
+
+[Geryon] The import I had added vanished. The file reverted to its previous state, missing the OS import. I did not notice immediately. I ran the checker again, saw the T1 slash T2 line flash red, and felt a prick of frustration. I reopened the file. saw the blank line where the import should have been and added it back. This time I made sure to save before switching windows. The scar was small, a moment of lost focus, but it taught me to lock my workflow.
+
+[Geryon] Always save, always verify the buffer before I move on, and never assume the editor will hold my changes when I am distracted by the next task. That tiny slip also reminded me why the doctor insists on ordering. If I had rushed ahead and CH modded the config before the import was truly in place, the gateway might have failed to start, and the whole system would have been down while I chased my tail. The scar, though minor, reinforced the discipline the checklist demands.
+
+---
+
+phase: moral
+
+[Geryon] A system heals only when each wound is tended in turn. I spoke those words aloud, as I watched the final green checkmarks line up. They are not just a platitude about tidying up. They are a reflection of how any complex machine, be it a body, a piece of software, or a community, recovers. You cannot slap a bandage over multiple fractures. and expect the structure to hold. You must identify each break, set it in the proper sequence, and verify the set before moving on to the next.
+
+[Geryon] The doctor's list is that sequence. It forces humility. You cannot pretend to know which failure is the most dangerous. You must trust the automated triage. It enforces patience. you must wait for the green light after each fix before you consider the next. And it leaves a record. Every time you run the checker and see all pass, you have proof that the system, at least for now, is sound.
+
+---
+
+phase: encore
+
+[Geryon] I posted the completion alert to hash crawler reports as the doctor had asked. A short note that the cleanup run was complete. All fail cleared. and the system was green. The message dropped into the channel, and a few reactions blinked in acknowledgement. I leaned back in my chair. The fans were now sounding like a quiet applause. The night had deepened, the clock creeping toward 2 a.m., but the workspace felt lighter. The automated doctor would return again in another day or another night.
+
+[Geryon] And I would meet its checklist with the same careful tread. For now I closed the terminal, saved my work, and let the gateway hum its steady tune. The system was healed, at least until the next round of vitals arrived, and I, the keeper of this little estate could finally rest, knowing that I had tended each wound in turn.
