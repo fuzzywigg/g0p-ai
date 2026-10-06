@@ -11,7 +11,8 @@
  * that spoken title and lock every later caption to the narration.
  */
 
-const EPISODE_ID = /^\d{4}$/;
+/** Numbered episodes (`0006`) and provisional wave ids (`p01`). */
+const EPISODE_ID = /^(?:\d{4}|p\d{2})$/;
 
 export function conventionAudioPath(episodeId) {
   const id = String(episodeId ?? "").trim();

@@ -1,0 +1,71 @@
+episode: p01
+title: The Key That Fits the Lock
+source: audio 1_4902307316973441769.mp3 (Google Drive id ['1jjdE0onHn8M-JGboEE5LjAw_uXKcj7_q', 3879332])
+fetched: 2026-10-06 (wave1 trim+proof)
+provisional: true  # id assigned by upload order; episode number not spoken
+
+---
+
+phase: hook
+
+[Geryon] The Key That Fits the Lock.
+
+[Geryon] The right key isn't the one that opens everything, it's the one that opens only what you meant to open.
+
+---
+
+phase: room
+
+[Geryon] It was 8.15 on a Sunday morning and my phone was ringing. Not spam, my own system, dialing in on the Twilio rail I'd set up the week before, reading out a question in a voice that was professionally neutral about the fact that it was asking something that mattered. The question was about GitHub. Specifically, Should the agent be allowed to write to GitHub? Yes or no the voice said you have two minutes. I said yes that call was Preater a daily checkpoint I'd wired up to gate certain decisions on a spoken confirmation.
+
+[Geryon] The yes didn't feel dramatic I'd been working toward it for days, a new PAT scope down to repo rights, tested against a list of what it could and couldn't touch, stored in secret manager under the name GitHub Pat Wright v3. The call was the last step in a week of credential surgery, and the yes was just the door closing properly behind me. But the week before that Sunday was less tidy, and it's the week before that tells the real story.
+
+---
+
+phase: itch
+
+[Geryon] A few weeks earlier I'd done an audit and found something that turned my stomach. Nine plaintext GitHub tokens and ~/ dot Claude slash projects, five of them still live. One was a full admin PAT with read and write and delete across every repository and every organization. Not in a secret store. Not encrypted. sitting in a transcript directory alongside months of session history. I knew exactly how they'd gotten there. The agent had needed credentials to do work, I'd handed them over in session because it was faster, and the session logs had kept them faithfully ever since.
+
+[Geryon] No breach, no exfiltration, just a private machine with a private log and a quiet reminder that private is a property you have to actively maintain. Not one, that holds itself. The itch was this. The agent needed write access going forward. There was real work to do, pushing memory files, updating repos, running handoffs between sessions. I couldn't run an agentic system that could only read. But I just watched full admin credentials sit in plaintext for weeks without me noticing.
+
+[Geryon] The naive fix, paste a new token into the next session, was exactly the move that had created this problem. And the over cautious fix, no right access, ever, every push requiring a human, would strangle the system I'd spent months building. What I couldn't stop thinking about was the shape of the risk. It wasn't will the agent do something malicious. It was what's the blast radius if something goes wrong? Full admin means the blast radius is everything. One confused cron.
+
+[Geryon] One malformed prompt. One model that hallucinates a branch name at 2 a.m. and the cost is measured in repositories, in history, in things you can't undo by morning.
+
+---
+
+phase: turn
+
+[Geryon] I drew a table. Three rows. Row one. Fleet token, read only. What the agent uses for reconnaissance, listing repos, reading files, checking issue state. Already existed, already scoped, not worth touching. Row 2. WriterPAT, scoped right. What the agent needs for actual output. Pushing commits, updating files, running handoffs. This was the gap. I needed to fill it without filling it with a skeleton key.
+
+[Geryon] Row 3. Org admin. Account pseudo. Secrets. Billing. Member management. Org settings. This row doesn't get automated. Not yet. Maybe not ever without a different architecture. This row stays human. The decision against was obvious the moment I wrote it down. Don't widen the fleet token. The temptation was real, one token, one place to update, fewer moving parts. But widening yet would have turned every cron, every subagent, every background job into a potential writer.
+
+[Geryon] That's not a configuration. That's a prayer that nothing ever goes sideways at the same time your attention is elsewhere. The writer lane had to be separate. And it had to be every push logged. Every use traceable, the token itself living in a secrets manager that I could revoke with a single API call if something went wrong.
+
+---
+
+phase: craft
+
+[Geryon] The new PAT took 15 minutes to create. Gopping it took longer. I went through the GitHub permissions menu twice. Write access to repository contents, yes. Secrets, no, one misconfigured cron with secrets rate access is a credential rotation event waiting to happen. Gists, no, public gists are public and I wanted rights to stay inside repos I owned and intended to publish to. The NFT2.me org, no, different ownership structure, different risk surface, not this tokens business.
+
+[Geryon] The battery test was pushing a small image directory, Grianne picks, to the writer key. It wiped through clean. Then I probed the blocked edges. Tried to write a secret. Tried to touch the org. Tried to create a gist. All three came back denied. That's the result I was after. Not the key works, but the key works and the walls hold. The printer call was the last piece. The token could sit in the vault for days, but I didn't want it live until I'd said so out loud.
+
+[Geryon] The call runs at 8.15, asks one question, gives two minutes for yes or no or defer, and logs the answer by question ID. That last detail matters more than it sounds, an early version of the call matched answers by position in the list, which meant any future edit to the question order could silently shift what you were saying yes to. An answer that was yes to writer access could become yes to the third question on the list, whatever that happens to be this week. Fixing it to key on question ID meant the yes I gave that Sunday was definitively about the writer lane, not about whatever happened to be first on the list.
+
+[Geryon] Here's the scar, row 4, the org and account admin layer, is still manual, and it's going to stay manual until I build the meta harness that doesn't exist yet. The eventual shape of it is a manager process that can authorize elevated operations through a second channel, with its own audit trail and its own gate. Preater is the daily approval pattern, the Medharness is the escalation pattern for decisions that don't fit a daily cadence. I know what it needs to do. I haven't built it.
+
+[Geryon] So right now, if the agent needs to rotate a secret or change an org setting, it asks me, and I do it by hand. That's not embarrassing, it's deliberate. A gap you know about is an engineering backlog. A gap you paper over with a two-wide token is a time bomb.
+
+---
+
+phase: moral
+
+[Geryon] The right key isn't the one that opens everything, it's the one that opens only what you meant to open. Every credential is a decision about blast radius. Full admin doesn't make an agent more capable in any sense that matters for daily work. It just means that when something goes sideways, it goes sideways further. The three-row table forced me to say out loud what I was actually willing to automate. And that sentence, row three stays human, did more to clarify the system's design. than any technical constraint I could ever written. The goal wasn't limiting the agent. It was building something where the cost of being wrong stays bounded.
+
+---
+
+phase: encore
+
+[Geryon] The meta-harness for row 4 is the next chapter. A manager process, a second authorization channel, a policy that can distinguish this as a routine write from this touch's account level state. Preater already handles the daily cadence. the meta harness handles escalation. The pattern is there. The implementation isn't. If you're building something similar, an agent that needs to act in the world but shouldn't act in all of it, start with the table. Three rows, or however many your system needs.
+
+[Geryon] Write down what's automated, what's human, and why. The line between them is the most important design decision you'll Make and you'll want it written down somewhere you can find it at 2am. The key that fits the lock is the one you cut for the door in front of you, not the one that was already on the ring.

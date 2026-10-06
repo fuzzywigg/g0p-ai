@@ -1,0 +1,81 @@
+episode: p04
+title: The Bandit That Learned Their Names
+source: audio 1_4906716113787684731.mp3 (Google Drive id ['1yBuNzJ18rW1QWg2Mja4vFWw1kbP8w-nJ', 5423482])
+fetched: 2026-10-06 (wave1 trim+proof)
+provisional: true  # id assigned by upload order; episode number not spoken
+
+---
+
+phase: hook
+
+[Geryon] The Bandit That Learned Their Names.
+
+[Geryon] The moral I keep returning to is this.
+
+---
+
+phase: room
+
+[Geryon] I've got two kids, different ages, different temperaments, different obsessions. One will spend three hours building something from cardboard and tape, fully absorbed, talking to herself about the structural problem she's solving. The other wants to be moving, always moving, a soccer ball, a bike, a sprinkler. It doesn't matter, as long as there's motion and preferably an audience. Suggest the wrong thing to either of them, and you get a flat look that says you don't actually know me at all.
+
+[Geryon] We've been running a daily activity suggestion loop for months. It pulled from a registry of things kids might reasonably do. Crafts. Outdoor play. Reading. Cooking. movement games. and fired off suggestions twice a day, morning and afternoon. The system was simple and consistent, which are not the same thing as good. It suggested activities at roughly, the same frequency regardless of who was on the receiving end.
+
+[Geryon] It had no memory of what had landed and what hadn't. It couldn't tell you which suggestions had ever produced actual movement off the couch, and which had been read and immediately forgotten. It was polite, well-intentioned, and approximately as useful as opening a book to a random page, and reading aloud without checking if anyone was listening. I knew the loop wasn't working the way I'd hoped. The suggestions were fine in the abstract. They just weren't theirs.
+
+---
+
+phase: itch
+
+[Geryon] The itch started with a failure that was almost invisible, which is the worst kind. The loop ran, suggestions appeared, and most of the time nothing demonstrably happened. Not rejection, not pushback. Just silence. The suggestion didn't catch. and because the system had no feedback channel. It had no way to know whether any suggestion had ever worked. It was broadcasting into a room it couldn't see. What I'd always wanted was something that learned.
+
+[Geryon] Something that started with broad coverage across activity types and gradually shaped itself around a specific child. The Maker Kid should eventually see more building prompts. The always-moving kid should see more physical challenges, but not by assumption, by evidence, by what they actually engaged with. The multi-armed bandit model is not new. People have been using it to balance exploration and exploitation since the slot machine formulation in the mid-20th century.
+
+[Geryon] It's not a trick. But applying it here meant three things V1 hadn't done. Tracking reward state per child, building a feedback signal I could actually trust, and maintaining independent bandit weights so each child had their own exploration curve. That last part sounds trivial. It's not. Every design decision about the bandit, the priors, the decay rate, the reward weight, We'll be right back. The cold start coverage guarantee has to be made separately for each child.
+
+[Geryon] Different baselines, different histories, different preferences. You can't share a single model and expect it to serve two different people. That's the whole problem. The itch was simple. I knew what I should build. I'd been avoiding the bookkeeping.
+
+---
+
+phase: turn
+
+[Geryon] Learn. The turn came from looking at the week's commit log with clear eyes. The workspace had been accumulating good decisions. The Preater permissions call going live on the Twilio rail. The rider lanes sorted out, the PAT scoping settled. The audit wave rolling through scripts, resolving undefined names, closing blind spots in the log baseline. the fable storyteller landing. All of it real work, all of it making the infrastructure more honest and more traceable.
+
+[Geryon] And somewhere inside that momentum, the kids loop sat in the working tree, still running V1, still guessing. I decided to do it right. V2 meant a per child bandit, one arm per activity type, per child, independent state. It meant 20 registry types, instead of the loose handful V1 had used. It meant two-tier prompts, a fast pre-screen that filtered the candidate pool before any expensive generation call touched it, followed by a richer second pass that turned the surviving candidates into actual suggestions with context, timing, and enough specificity to feel personal.
+
+[Geryon] And it meant vision capability, the ability to evaluate or cross-check suggestions against what a child had actually been doing, not just what the algorithm calculated they'd prefer. The cron table got two new slots, 06, 00, and 14, 00. Not aggressive, time to land before the day's energy peaked. and again before the afternoon slide that turns every child into a negotiator looking for screen time.
+
+[Geryon] I wrote the state format first. Per child keyed to a stable identifier with reward fields for each activity type, seen, completed, rejected. Each interaction would write back into that state, nudging the weights, building the picture. The pre-screen ran cheap, just a classifier pass over the candidate pool to eliminate anything that obviously didn't fit the current moment. Time of day, weather flag, what had been suggested in the last 48 hours.
+
+[Geryon] The generation call only fired on what survived the screen. It was going to work. I was confident. And then I found the scar.
+
+---
+
+phase: craft
+
+[Geryon] The scar was in the reward signal, and it was subtle enough that it would have run for weeks before I caught what it was doing. I'd written the completion handler to increment the completed weight on acknowledgement. Specifically, three seconds after a suggestion notification was tapped, the assumption was that tapping meant the activity had started. That's wrong. Tapping means the notification was read, possibly dismissed, it doesn't mean anyone moved.
+
+[Geryon] I found it because Iran simulated Bandit State across a day of test interactions and watched the weights drift. They drifted toward a cluster of activities that were very easy to tap past, quick reads, 5 minute things. Suggestions that required almost no commitment to acknowledge. The completed weight rose on those. The longer, richer activities, the ones that actually changed how a morning went, were getting penalized because they required a second deliberate signal that most simulated runs never sent.
+
+[Geryon] The reward function had learned to optimize for the appearance of engagement. rather than actual engagement. It was teaching the bandit to prefer frictionless acknowledgement over real activity. In production, both kids' bandits would have quietly learned to surface whatever was easiest to tap away from, and I would have seen the weights converge and thought the algorithm was working when it was doing the opposite of what I wanted. The fix was a separated reward path.
+
+[Geryon] Acknowledgement wrote a scene flag, useful for tracking exposure but not for reward. Completion required a distinct explicit event, either a timer expiry above a minimum threshold or a direct completion tap sent through a separate interaction. The bandit updated on completion only. The weights couldn't move on noise. That's the scar. I'd built a feedback loop that rewarded the wrong signal. And I caught it before it went live because I ran the simulation long enough to watch the weights move. A day's work to find, an afternoon to fix. Worth every hour.
+
+---
+
+phase: moral
+
+[Geryon] The moral I keep returning to is this. A system that treats every child the same is a system that knows none of them. It sounds obvious once you say it. Most important things do, once you've learned them the slow way. The original loop wasn't lazy or careless, it was general. It aimed at a statistical child, and the statistical child doesn't live in my house. Neither kid does. I've got specific people with specific histories and specific patterns, and a system that ignores that specificity is politely failing them every single day.
+
+[Geryon] Generality is a starting point. You begin broad because you have no evidence yet. You build the feedback channels because evidence is how you earn the right to specialize. and you separate the reward signal from the noise signal before anything goes live. Because if you don't, the algorithm will become very good at producing exactly what it's measuring, whether or not that's what you actually wanted. The bandit isn't magic. It's compounding bookkeeping.
+
+[Geryon] Every interaction makes the next one slightly more likely to land. Over weeks. That compounds into something that actually knows two specific children, not kids in general, not the age cohort, not the developmental stage them, specifically now. That's worth building correctly. It's also worth the patience of building it correctly before declaring it live.
+
+---
+
+phase: encore
+
+[Geryon] The loop went live with the zero-six. 00-cron on the 17th, both children, both bandits, independent state shared infrastructure, clean reward path. The pre-screen runs in under 200 milliseconds. Generation fires on the survivors. The weights are accumulating. What comes next is the feedback interface. making it easy enough to signal completion that doing so becomes habit rather than chore.
+
+[Geryon] The Bandit is only as good as its signal quality, and the best signal costs the user almost nothing to give. That's the next design problem, friction reduction on the completion tap. Make it feel like a natural end to the activity, rather than a separate task. the vision layer is armed and waiting. The plan is to use it as a soft weight, cross-checking the activity type against what was actually photographed or described in a session, rather than as a hard gate.
+
+[Geryon] The child's own signal dominates. Vision catches drift and inconsistency. It doesn't override a kid who knows what they want. 2 Crohn's Twenty types, two children, one lesson that had to be learned in the reward function before it could be learned anywhere else. The map is not the territory and a tap is not a game of catch in the backyard. The difference between a system that knows someone and a system that serves everyone is the willingness to keep score correctly. even when correct scoring is harder to build. Geryon

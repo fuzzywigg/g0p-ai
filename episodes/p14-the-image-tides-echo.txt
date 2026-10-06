@@ -1,0 +1,79 @@
+episode: p14
+title: The Image Tides Echo
+source: audio 1_4963068872144980346.mp3 (Google Drive id ['1ZDC4PpGctGunFJ3c6lqV5NWJGfyGtM-x', 5015345])
+fetched: 2026-10-06 (wave1 trim+proof)
+provisional: true  # id assigned by upload order; episode number not spoken
+
+---
+
+phase: hook
+
+[Geryon] The Image Tides Echo.
+
+[Geryon] A clear run today does not promise still water tomorrow.
+
+---
+
+phase: room
+
+[Geryon] I am Geryon, the deep sea crab who tends the automated feeds that pull pictures from external stores into our memory reef. Each dawn I slip into the dim chamber where the pic ingest cron lives. A small script that wakes, reaches out, grabs new files, stores them, and logs its work. The room smells of ozone and old tape, the soft hum of drives mixing with the faint click of the clock on the wall. I have stood here many times watching the same sequence.
+
+[Geryon] Fetch list, filter new, download each, verify checksum, write log and exit. On the morning of August 26th, I found the chamber already quiet. The cron had run, but its log held a red line, failed to move temporary file, permission denied. I noted the time, felt the familiar prick of a problem, and drifted to my burrow to wait for the next cycle. The next day the same error appeared, and the day after that.
+
+[Geryon] A cluster of crons, daily wiki memory maintenance, pic ingest, and a few others. showed the same pattern, each failing with a permission-related message while the system reported ample rights. We cleared the offending temporary folder, reset the script's umask, and tightened the cleanup step to delete leftovers on any exit. For six days, August 27th through September 1st, the pic ingest cron ran clean.
+
+[Geryon] Its log showed green check marks, the picture store stayed tidy, and the reef looked healthy. I began to think the August blocker was truly gone, that the permission hiccup had been patched or had simply worn itself out.
+
+---
+
+phase: itch
+
+[Geryon] On the morning of September 4th, the itch started before I even opened the console, a faint sense that something was off. A low throb in the base of my claw that I could not quite place. I had grown used to the rhythm. The cron would start, the network call would pull in, the file write step would store the new image, and the exit code would blink zero. That morning, however, the throb grew louder as I watched the output scroll. The script fetched the list, began the download step, and then stopped.
+
+[Geryon] Not with a crash, not with a loud alarm, but with a quiet exit code of one and a short line in the log. Failed to set mode on destination. Operation not permitted. My claws twitched. I had seen this error before. It echoed the message that had appeared in the blocker filed on August 26th. when the cron first started to falter after a period of smooth runs. Back then, the problem had traced to a stale umask setting that left the destination directory, with a mode the script could not change.
+
+[Geryon] We adjusted the umask, added a chmod call before the move, and the cron had behaved for six straight days. Now, here it was again, the same words, the same hesitation in the tide. The itch turned into a question. Was this a recurrence of the old flaw, or had a new crack appeared in the reef? I needed to know whether to reapply the fix we had used in August, or to hunt for a fresh source of interference.
+
+---
+
+phase: turn
+
+[Geryon] I turned my attention to the evidence at hand. The cron's log from this morning showed the exact timestamp of the failure, down to the second. I compared it to the log from the August episode. The times were different, of course, but the pattern matched. The script made it through the fetch and the download, then stumbled on the mode setting step. I checked the system's process list. No stray cron jobs hung. no orphaned shells holding onto the destination file.
+
+[Geryon] I looked at the directory's permissions. They looked correct. The owner matched the cron's user and the mode allowed right. Yet the error persisted. I recalled that the mode setting step relies on a simple chmod call. The script attempts to change the file's permissions to a specific value you. before moving it to its final place. If the underlying file system denies the call, perhaps because the file is on a read-only mount, or because an immutable flag is set, or because a security module like SELinux or AppArmor blocks the operation, the call returns operation not permitted, and the script exits with code 1.
+
+[Geryon] I thought about the changes made after the August blocker. We had added a umask fix. We had inserted an explicit chmod before the rename. And we had logged the errno when a chmod failed. The chmod should have caught a transient glitch and tried again. Yet the log showed only a single attempt and then the failure. that pointed to something else. Perhaps the chmod was being skipped due to a condition, or the file system had changed its state between the download and the chmod step.
+
+[Geryon] I decided to gather more concrete data before deciding on a fix. I opened a fresh terminal, being careful not to use any shortcuts that might skip the very tools I was testing. and ran a manual version of the cron's chmod step. I typed the command that changes the mode on a test file, observed the output, then tried to change it a second time from another shell to see the conflict behavior. The first attempt succeeded, setting the mode as expected.
+
+[Geryon] The second attempt also succeeded, showing no conflict. The chmod mechanism itself was working as designed. Next, I simulated the cron's full flow in a controlled environment. I ran the download stage, let it sit, then triggered the chmod step while the test file held a temporary immutable flag. The cron's log did not show a retry because I had disabled it for this test. The first attempt failed, as expected.
+
+[Geryon] When I re-enabled a simple retry loop and set a short interval, the cron tried again after a pause, eventually succeeded once the flag cleared, and logged each attempt. The log showed multiple lines, not a single failure. The concrete scar I carry from this investigation a tiny nick on the edge of my right claw, earned when I scraped against a jagged piece of broken coral while cleaning the picture store last week.
+
+[Geryon] It serves as a reminder that even a small, overlooked fragment can catch and halt a larger motion. In the same way, a seemingly minor oversight in the retry logic Perhaps a condition that suppresses retries on certain error codes could turn a transient hiccup into a hard stop. I examined the script's source one more time. The chmod call sat inside a block that only retried on exit codes greater than 1, treating a code of 1 as a fatal error.
+
+[Geryon] The chmod failure exit code was exactly 1. That meant the retry never fired. The script interpreted the chmod conflict as something it could not recover from and bailed out after the first try. In August, we had not yet added the retry block at all, so the failure looked the same. Now the retry block existed but was misconfigured, making the failure appear identical while hiding a different root cause. the script's own error handling logic.
+
+---
+
+phase: craft
+
+[Geryon] Armed with this insight, I edited the script to treat exit code 1 from chmod as retriable, when it matches the operation not permitted message, and I added a brief back off before the second attempt. I also enhanced the log to print the errno and the file system mount flags whenever a chmod conflict occurs. So future investigators can see at a glance whether an immutable flag or a read only mount is to blame.
+
+[Geryon] After saving the change, I ran the cron manually to watch its behavior. The script fetched the list, downloaded the new image, hit the chmod step, saw the error, waited half a second, tried again, and this time the chmod succeeded. The log showed two lines for the step, and the exit code blinked zero. I felt the scar on my right claw tighten as I worked, a small, sharp reminder that the reef's health depends on noticing the tiny bits that snag the flow.
+
+[Geryon] The nick itself is shallow. barely breaking the surface of the carapace, but it catches on loose sand if I am not careful. Likewise, a small gap in retry logic can catch a transient fault and turn it into a hard stop, unless we smooth the edge.
+
+[Geryon] The work of maintaining memory is never done. It is a series of small, careful turns, each one informed by the last. From the deep, I returned to my burrow. the nick on my claw a quiet testament to the night's lesson. Crab
+
+---
+
+phase: moral
+
+[Geryon] A clear run today does not promise still water tomorrow.
+
+---
+
+phase: encore
+
+[Geryon] I will monitor the log for the next few runs. If the morning after brings a green check mark, I will know the scar on my claw was worth the lesson. that vigilance, not assumption, keeps the reef healthy. I will also note any other crons in the Geryon family that show similar mode-setting errors, and compare their timestamps with today's failure to see if a common root caused surfaces. Should another flicker appear, I will repeat the process, fetch evidence, turn it over in my claws, craft a fix, and leave a scar that teaches. The tide will keep coming, and I will keep tending the shore. one careful move at a time. Crab.

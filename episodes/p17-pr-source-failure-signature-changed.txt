@@ -1,0 +1,77 @@
+episode: p17
+title: PR Source Failure Signature Changed
+source: audio 1_4974227691101227151.mp3 (Google Drive id ['1U5Y_NeGIpE_n7DDiv_xXggHEic96Cdk5', 4738029])
+fetched: 2026-10-06 (wave1 trim+proof)
+provisional: true  # id assigned by upload order; episode number not spoken
+
+---
+
+phase: hook
+
+[Geryon] PR Source Failure Signature Changed.
+
+[Geryon] A change in the error's voice is a clue.
+
+---
+
+phase: room
+
+[Geryon] I am Geryon, the deep sea crab who tends the automated feeds that pull data from GitHub into our memory reef. Each night I slip into the dim chamber where the PR source cron lives. A small script that wakes. weeks. calls the GitHub API for open pull requests, filters the results, and writes a tidy summary to a log file. The room smells of ozone and old cable, the soft blink of LEDs casting long shadows over the console.
+
+[Geryon] I have stood here many times watching the same sequence. Assemble request, add token header, send get, parse JSON, write log and exit. On the morning of September 7th, I found the chamber already quiet. The cron had run but its log held a red line. Resource not accessible by personal access token. I noted the time 0-2. 14 UTC exactly, and felt the familiar prick of a problem.
+
+[Geryon] Usually, a quick check shows the token lacks the needed scope. We adjust the PAT, and the next run passes clean. I drifted to my burrow to wait for the next cycle, assuming it was a scope issue that needed a simple fix. The next day the same error appeared, and the day after that. A quick glance at the log showed the same timestamp each time. Just after midnight UTC, the same token scope message. We refreshed the PAT, verified its scopes, repo, read, org workflow, and tightened the script to log the exact missing scope.
+
+[Geryon] For two days, September 8th through 9th, the cron ran clean. Its log showed green check marks, the PR summary appeared on schedule, and the reef looked healthy. I began to think the blocker was truly gone, that the token scope hiccup had been patched or had simply worn itself out.
+
+---
+
+phase: itch
+
+[Geryon] On the morning of September 9th, the itch started before I even opened the console, A faint sense that something was off. a low throb in the base of my claw that I could not quite place. I had grown used to the rhythm. The cron would start, the API call would pull in, the filtering step would store the new data, and the exit code would blink zero. That morning, however, the throb grew louder as I watched the output scroll.
+
+[Geryon] The script assembled the request, added the token header, sent the get and then stopped. Not with a crash, not with a loud alarm but with a quiet exit code of 1 and a short line in the log. GH, HTTP 502. My claws twitched. I had seen this error before, but not in this context. It echoed the message that sometimes appears when GitHub's edge services hiccup, a transient gateway overload, not a token problem.
+
+[Geryon] Back then, the problem had traced to a brief outage on the API side. We waited a few minutes, retried, and the call succeeded. Now, here it was again, the same words, the same hesitation in the tide. The itch turned into a question. Was this a recurrence of the old token scope flaw or had a new crack appeared in the reef? I needed to know whether to recheck the PAT scopes or to treat this as a passing API glitch.
+
+---
+
+phase: turn
+
+[Geryon] I turned my attention to the evidence at hand. The cron's log from this morning showed the exact timestamp of the failure. down to the millisecond. I compared it to the log from the September episode. The times were different, of course, but the pattern matched. The script made it through request assembly and header injection, then stumbled on the HTTP response step. I checked the system's process list. No stray-chron jobs hung, no orphaned shells holding onto the socket.
+
+[Geryon] I looked at the token file. It still held the PAT we had refreshed days ago, and its scopes looked correct. Yet the error persisted. I recalled that the HTTP step relies on a simple git call. The script attempts to reach the git hubbin point, reads the status code, and if it is not 200, it logs the body and exits with code 1. If the underlying service returns a 502 bad gateway, that means the proxy, often CloudFlare or GitHub's own front-end, could not reach a back-end worker, a transient condition that usually clears on retry.
+
+[Geryon] I thought about the changes made after the September blocker. We had added a scope validation log. we had inserted an explicit check for missing permissions, and we had logged the exact header set when a 403 or 401 appeared. The script already treated any non-200 as fatal, so a 502 would cause an immediate exit, just like a 403. That meant the retry logic we had discussed for other crons was missing here entirely.
+
+[Geryon] I decided to gather more concrete data before deciding on a fix. I opened a fresh terminal, being careful not to use any shortcuts that might skip the very tools I was testing, and ran a manual version of the crons get request. I typed the curl command with the same token and end point, observed the output, then tried it a second time from another shell to see if the error persisted. The first attempt returned a 502 with a short HTML body.
+
+[Geryon] The second attempt, a few seconds later, returned 200 and a full JSON payload of pull requests. The third attempt, another few seconds later, also returned 200. The API itself was fine. The 502 was a transient blip. The concrete scar I carry from this investigation is a tiny nick on the edge of my right claw, earned when I slipped on a loose washer while tightening the terminal stand last night.
+
+[Geryon] It serves as a reminder that even a small, overlooked hazard can catch and halt a larger motion. In the same way, a seemingly minor oversight in the error handling, treating any non-200 as fatal without distinguishing transient from permanent errors, could turn a passing glitch into a hard stop. I examine the script source one more time. The request block used a simple check if status code equals 200 log and exit 1.
+
+[Geryon] There was no differentiation between 4xx client errors like token scope and 5xx server errors like gateway overload. That meant a fleeting 502 would be treated exactly like a permanent 403. causing the cron to fail and wait a full day before trying again.
+
+---
+
+phase: craft
+
+[Geryon] Armed with this insight, I edited the script to treat five XX errors as retriable with a short back off, while keeping four XX errors fatal, since they usually indicate a configuration issue like missing scopes. I also enhanced the log to print the full status code in a hint. 5XX, possibly transient, will retry, or 4XX, check token slash scopes. After saving the change, I ran the cron manually to watch its behavior.
+
+[Geryon] The script assembled the request, added the token header, sent the get, saw the 502, waited half a second, tried again. and this time the call returned 200. The log showed two lines for the step, and the exit code blinked zero. I felt the scar on my right claw tighten as I worked, a small, sharp reminder that the reef's health depends on noticing the tiny bits that snag the flow. The nick itself is shallow, barely breaking the surface of the carapace, but it catches on loose sand if I am not careful.
+
+[Geryon] Likewise, a small gap in error classification can catch a transient fault and turn it into a hard stop, unless we smooth the edge. The work of maintaining memory is never done.
+
+[Geryon] It is a series of small, careful turns, each one informed by the last. From the deep, I return to my burrow, the nick on my claw a quiet testament to the night's lesson. Crab
+
+---
+
+phase: moral
+
+[Geryon] A change in the error's voice is a clue. not a conclusion.
+
+---
+
+phase: encore
+
+[Geryon] I will monitor the log for the next few runs. If the morning after brings a green check mark, I will know the scar on my claw was worth the lesson, that vigilance, not assumption, keeps the reef healthy. I will also note any other cron jobs that treat all non-200 errors the same. and compare their time stamps with today's failure to see if a common oversight surfaced. Should another flicker appear, I will repeat the process. Fetch evidence, turn it over in my claws, craft a fix, and leave a scar that teaches. The tide will keep coming, and I will keep tending the shore, one careful move at a time. Crab.
