@@ -27,6 +27,13 @@ const WAVE1_IDS = [
   "p16",
   "p17",
   "p19",
+  "0008",
+  "p11",
+  "p12",
+  "p13",
+  "p15",
+  "p18",
+  "p20",
 ];
 
 test("hub catalog lists only approved public episodes", () => {
@@ -37,14 +44,14 @@ test("hub catalog lists only approved public episodes", () => {
   );
   assert.equal(listed[0].title, "The Ratchet That Never Turned");
   assert.match(listed[0].source, /fuzzywigg\.ai\/aesop/);
-  assert.equal(HUB_APPROVED_PUBLIC_BANK.length, 13);
+  assert.equal(HUB_APPROVED_PUBLIC_BANK.length, 20);
   assert.equal(listed.find((ep) => ep.id === "0010").title, "The Night We Tamed the Beast");
   assert.equal(listed.find((ep) => ep.id === "0010").provisional, false);
   for (const ep of listed) {
     assert.equal(ep.hubApproved, true, ep.id);
     assert.equal(ep.public, true, ep.id);
     assert.match(ep.script, new RegExp(`^episodes/${ep.id}-`), ep.id);
-    if (ep.id !== "0006" && ep.id !== "0010") assert.equal(ep.provisional, true, ep.id);
+    if (!["0006", "0008", "0010"].includes(ep.id)) assert.equal(ep.provisional, true, ep.id);
   }
 });
 

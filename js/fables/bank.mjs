@@ -15,6 +15,13 @@ import { FABLE_P14 } from "./p14.mjs";
 import { FABLE_P16 } from "./p16.mjs";
 import { FABLE_P17 } from "./p17.mjs";
 import { FABLE_P19 } from "./p19.mjs";
+import { FABLE_0008 } from "./0008.mjs";
+import { FABLE_P11 } from "./p11.mjs";
+import { FABLE_P12 } from "./p12.mjs";
+import { FABLE_P13 } from "./p13.mjs";
+import { FABLE_P15 } from "./p15.mjs";
+import { FABLE_P18 } from "./p18.mjs";
+import { FABLE_P20 } from "./p20.mjs";
 
 export const FABLE_BANK = Object.freeze({
   "0006": FABLE_0006,
@@ -29,5 +36,12 @@ export const FABLE_BANK = Object.freeze({
   "p14": FABLE_P14,
   "p16": FABLE_P16,
   "p17": FABLE_P17,
-  "p19": FABLE_P19
+  "p19": FABLE_P19,
+  "0008": FABLE_0008,
+  "p11": FABLE_P11,
+  "p12": FABLE_P12,
+  "p13": FABLE_P13,
+  "p15": FABLE_P15,
+  "p18": FABLE_P18,
+  "p20": FABLE_P20
 });
