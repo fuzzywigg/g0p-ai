@@ -1,0 +1,83 @@
+episode: p07
+title: The GPU Whisper in the WSL Walls
+source: audio 1_4936480408947656718.mp3 (Google Drive id ['1Bj6x8C6edtRS5sniYdtEUZyxx0hYHdxk', 5559528])
+fetched: 2026-10-06 (wave1 trim+proof)
+provisional: true  # id assigned by upload order; episode number not spoken
+
+---
+
+phase: hook
+
+[Geryon] The GPU Whisper in the WSL Walls.
+
+[Geryon] Sometimes the engine was there all along, you just had to point the fuel line right.
+
+---
+
+phase: room
+
+[Geryon] The apartment was quiet except for the low hum of the Legion's fans and the occasional click of my mechanical keyboard. It was zero two, 17 EDT, the witching hour when the world's noise drops away and the only thing left is the glow of two monitors stacked like a lighthouse beacon. again. On the left screen, a tail of the Alama log scrolled in monochrome. Each line a heartbeat of the QN3. 1. 7B model laboring over a diff from the code crawler.
+
+[Geryon] On the right, a Grafana panel showed a flat line stuck at 15 tokens per second. Pathetic, really. for a machine that housed a GTX 1070 Gathering Dust in its PCIe slot. I had spent the past week wrestling with the idea that the GPU was just for show, a decorative afterthought in a CPU-first world. The documentation for Alama was clear. Enable CUDA, set the environment variable, and the models would magically migrate to the video memory.
+
+[Geryon] I'd done that, or so I thought, and yet the NVIDIA Smi readout stayed stubbornly at zero utilization while the CPU spiked to 90%. The room felt like a laboratory where the experiment kept failing, and I was the only one taking notes. I glanced at the sticky note on my monitor's bezel. Check LD library path. It had been there since the last time. I chased a cuter related ghost a reminder that libraries sometimes need to be told where to live.
+
+[Geryon] I laughed at myself How could I forget something so basic after all the reading I'd done yet? There it was a small piece of paper holding the key to a mystery I'd been treating like a monster under the bed.
+
+---
+
+phase: itch
+
+[Geryon] The itch started as a whisper in the back of my mind. During a daytime, stand up with the crawler team. We were reviewing the nightly spurts, those 30-minute bursts where the crawler proposes changes and the warden verifies them. The numbers were sobering. Each spurt took roughly six minutes to chew through a 24 KB diff, and with the current fleet size, we were looking at a full cycle of three and a half days. That meant high severity findings lingered, waiting for a night shift human to notice them before they could be drafted into a fix.
+
+[Geryon] I remembered Andrew's offhand comment from a previous sink. If we ever get the GPU lane live, we could cut that down to under a minute. It had sounded like a pipe dream, a fantasy we tucked away for someday. But the itch wouldn't let go. It tugged at my sleeve every time I saw the CPU usage chart spike. Every time the crawler stalled waiting for a token to arrive. It wasn't just about speed.
+
+[Geryon] It was about the feeling of being stuck in molasses while the world outside moved at a normal pace. I opened a new terminal and typed Alama PS. The list showed only the CPU instances. The ones bound to port 11,434 for the main service and 11,435 for the embeddings. No sign of a GPU-powered process. I then ran ls-usser-lib-slash-wsl-lib and saw the directory was there, filled with the cutest stubs that the WSL 2 kernel expects.
+
+[Geryon] The realization hit like a soft slap. The path existed, but Alama wasn't looking there. The LD library path variable in the services environment was blank, meaning the dynamic linker was restricted to the default system folders, which on this build excluded the WSL-specific CUDA libraries. My heart rate ticked up a notch. This wasn't a grand architectural flaw. It was a missing line in a configuration file.
+
+[Geryon] Tiny omission that turned a potential rocket into a bicycle. The itch turned into a firm resolve. I would find the exact place to set that path, test it in isolation, and if it worked, I'd roll it out to the crawlers without jeopardizing the stable CPU lane.
+
+---
+
+phase: turn
+
+[Geryon] The turn came not with a bang. but with a quiet edit to a SystemD user unit file. I created a copy of the existing Allama service, named it Allama GPUXP. Service, and pointed it at a new port, 11,436, so it could run side by side with the main instance without stepping on its toes. In the Service section, I added the line. I also made sure to set restart equals no by design, because the WSL-2 pinned memory issue, a llama hash 11,317, meant a crash could loop endlessly if we allowed automatic restarts.
+
+[Geryon] Instead, I wanted the unit to stay down after a failure, a clear signal that something was wrong. and needed manual inspection. I set keepalive equals 5m, so the service would linger just long enough to load a model and serve a request, and I capped max-loaded models equals 1 to keep the VRAM footprint predictable. After saving the file, I ran systemtiluser daemon reload, and then system tool users start Alama GPU Xp service.
+
+[Geryon] The journal spat out a few lines about loading the QN3 8B model and then silence. I held my breath and fired a quick test with curl HTTP slash 127 zero one eleven thousand four hundred thirty six slash API slash generate d model QN3 8B prompt. Hello, stream, false. The response came back in less than a second, and when I glanced at Nvidia Smi, the GPU utilization jumped to 62% with the memory bar showing 5.
+
+[Geryon] 58GB used out of the 8GB available. The speed up was palpable. The prompt eval rate leapt from the miserable 15 tokens per second on CPU to a staggering 1,532 tokens per second for the 1, 7B model, and 429 tokens per second for the 8B beast. I let out a laugh that was half disbelief, half triumph. The turn wasn't a grand strategic pivot.
+
+[Geryon] It was a simple correction of an environment variable that unlocked a latent capacity. The crawlers, which I'd been treating as plodding workhorses, could now become night falcons, swooping through diffs in seconds instead of minutes.
+
+---
+
+phase: craft
+
+[Geryon] The craft lay in the details that turned a successful experiment into a reliable piece of infrastructure. First, I had to make sure the crawlers would automatically prefer the GPU lane when it was healthy and fall back to CPU when it wasn't. I dug into the Gen back end, function in the crawler code base, and added a health check routine that pings port 11,436 with a lightweight request. If the call returns within 200ms and reports a model loaded, the crawler routes its request there.
+
+[Geryon] Otherwise, it silently falls back to the existing CPU endpoints on 11,434 and 11,435. Second, I needed a concrete scar to remind me of the cost of over eagerness. During the first soak test, I mistakenly added restart equals always to the unit file, thinking it would keep the service alive. The VM crashed hard after about 45 minutes, the kernel panic spilling over into the Windows host and forcing a hard reset.
+
+[Geryon] When I brought the system back up, I found the Alama journal littered with segmentation faults. Each one a testament to the pinned memory bug, lurking in the WSL-2 CUDA interaction. That SCAR, a blue screen memory dump saved in slash var slash crash slash, taught me to respect the isolation boundary. The GPU lane could be fast, but it had to be fragile by design, never allowed to drag the whole system down with it.
+
+[Geryon] Third, I documented the exact steps for anyone who wanted to reproduce the experiment. Copy the unit file, set the LD library path, disable automatic restarts, and monitor the journal for the first few runs. I also added a note to the project's runbook that the GPU lane is an opt-in feature. enabled by setting the environment variable use, ALAMA GPU, equals one in the crawler's configuration.
+
+[Geryon] That way, the main ALAMA service on ports 11,434 slash 11,435 remains untouched, preserving the stability of the embeddings and any downstream consumers that rely on them. The craft then was not just about making the GPU work, it was about building a cage around that power so it could be exercised safely, with clear escape routes should the beast show signs of strain.
+
+---
+
+phase: moral
+
+[Geryon] Sometimes the engine was there all along, you just had to point the fuel line right.
+
+---
+
+phase: encore
+
+[Geryon] The lights in the apartment had begun to shift from the deep blue of night to the pale gray of dawn when I finally leaned back in my chair. The echo of the GPUs were still faint in my ears. I opened the project's wiki and added a new entry titled, GPU Alama Lane. quick start. Linking to the commit that introduced the Allama GPU exp unit and the health check patch in the crawler. I tagged it with the same four labels that had guided this whole venture.
+
+[Geryon] GPU, Allama, Crawlers, Performance. I could already imagine the next encore. The crawlers now completing their spurts in under a minute. The warder filing patches within the same 30-minute window, and the high severity findings being drafted and merged before the sun rose over Indianapolis. The memory crawler, which had been plugging along at its own steady pace, would soon get a taste of the GPU lane as well, once we validated the embedding's model on the same card.
+
+[Geryon] But for now, I sat with a cup of coffee that had gone cold, satisfied that the mystery of the silent GPU had been solved not with a grand overhaul, but with a humble line in a config file and the willingness to look where the system was already pointing. The room felt less like a laboratory and more like a workshop where the tools once sharpened. could finally bite into the work they were meant to do. I smiled, saved my notes, and prepared to hand the reins over to the next shift, knowing the engine was purring quietly in the background, ready for its next lap.

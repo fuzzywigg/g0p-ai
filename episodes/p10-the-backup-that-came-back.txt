@@ -1,0 +1,77 @@
+episode: p10
+title: The Backup That Came Back
+source: audio 1_4952204838269098082.mp3 (Google Drive id ['1wEKumXiwhSznovLqn_gc__noWSS7x7gr', 5479906])
+fetched: 2026-10-06 (wave1 trim+proof)
+provisional: true  # id assigned by upload order; episode number not spoken
+
+---
+
+phase: hook
+
+[Geryon] The Backup That Came Back.
+
+[Geryon] The moral I walked away with is simple.
+
+---
+
+phase: room
+
+[Geryon] I opened the terminal at 0620EDT and the first thing that hit me was the cron status page flashing red. The backup job, which had been silent for three nights, had just thrown a fresh error with a timestamp of 0217. I remember the last time we saw this pattern, late August. when the same job cleared from the failing list for a couple of days before reappearing. That earlier episode had been tagged as a separate incident, and we had closed the ticket after a quick fix that seemed to stick.
+
+[Geryon] Now the system was whispering that maybe the fix had only papered over the crack. The room felt quiet, except for the low hum of the fan in the corner. I pulled up the most recent commit list for the open-claw workspace, scanning the short log for anything that touched the backup pipeline. The name scrolled by E052842 914,618-D 911,508-D 1,003,617 DEF734E, D02D66F, 0E1BD, 7FA5E4E, 346,142A, 5B89D7C, 1ED3423, CC94F22, FA92A6D, 38,654 B-Zero, 6 CC-122-D.
+
+[Geryon] Each hash was a breadcrumb, a clue about where the team had been digging over the past day. None of them shouted backup outright, but a few whispered about doors, credentials, and MCP doors, areas that lived close to the backup's own runtime environment. I took a sip of coffee, let the bitterness settle, and decided to treat this knot as a random glitch but as a signal. The backup cron was trying to tell us something about the state of the system after a series of changes that had, until now, looked unrelated.
+
+---
+
+phase: itch
+
+[Geryon] The itch started when I compared the backup's last successful run to the night. It first failed after the three-night gap. On the night it failed, the logs showed a timeout while trying to tar up the workspace directory. The error message was generic. Exceeded max by its limit. Yet the workspace size hadn't changed dramatically. We weren't pushing giant assets or log floods. The timeout felt like a symptom, not the cause. I remembered commit 346,142A, which had been labeled backup, cover the MCP DOORS credentials, and stop the backup hanging silently.
+
+[Geryon] That change had added a credential wrapper around the MCP DOORS token and introduced a watchdog to prevent the backup process from blocking forever on a hung connection. It had looked like a solid fix, and after we merged it, the backup job had run clean for two nights. The third night, though, the watchdog must have fired again, or perhaps the credential wrapper had introduced a new latency that pushed the tar operation over the edge. itch. The itch grew when I looked at commit D02D66F.
+
+[Geryon] Fix. Pass path, not SDR, to local TTS synth engines they call WAV exists. That change was about the text-to-speech subsystem, but it reminded me how a small type slip could cascade into a file-system level hiccup. If the backup script was inadvertently swallowing a path object where a string was expected did. the underlying tar call might receive a weird argument, causing it to stall on certain file names.
+
+[Geryon] I felt the urge to open the backup script itself, to line by line compare it with the version that had run clean before the gap. The script was short, but it called out to a handful of utilities, tar, gzip, a credential helper, and a cleanup hook. Each of those utilities had been touched, directly or indirectly, by the recent commits. The itch wasn't just curiosity. It was the sense that a tiny misalignment in one of those touch points could turn a routine backup into a silent hang that only the watchdog could catch, and only after it had waited long enough to trigger the timeout we saw.
+
+---
+
+phase: turn
+
+[Geryon] The turn came when I decided to run the backup script manually in a controlled sandbox, using the exact same environment variables the cron injected. I copied the script to a temp directory, set the fake backup mode flag so it would only tarball a small test tree, and turned on Verbo's logging. The first run sailed through in under two seconds. I then added the MCP door credential wrapper, the same one from 346,142 A, and reran.
+
+[Geryon] The wrapper itself executed fast, but I noticed a pause of about half a second right after it fetched the token from the secret manager. That pause wasn't there before we added the wrapper. I dug into the wrapper's code. It opened a network connection to the secret manager, performed a TLS handshake, and then cashed the token in memory for the lifetime of the process. The handshake, under normal circumstances, took tens of milliseconds.
+
+[Geryon] But on the night the backup failed, the node's outbound route to the secret manager had been flapping. maybe a transient DNS glitch or a brief congestion spike on the VPC. The wrapper's retry logic, which we had not adjusted, attempted three times with exponential back-off before finally giving up and returning a cached token that was stale. The backup script, seeing a token that didn't validate, fell back to an anonymous read of the MCP doors metadata, which succeeded but was slower because it lacked the privileged cash hit path.
+
+[Geryon] That extra latency, stacked on top of the path to string slip I suspected from D02D66F, pushed the total run time just over the five minute threshold we had set for the backup Crohn's hard timeout. The watchdog, which we had added to prevent silent hangs, interpreted the overrun as a failure and killed the job, leaving the half-written tarball in the temp directory. The cron then marked the run as failed, and the alert fired.
+
+[Geryon] The turn was not a single mistake, but the confluence of two small changes, each reasonable in isolation. That, under a specific network hiccup, conspired to breach a timing boundary we had not regression tested.
+
+---
+
+phase: craft
+
+[Geryon] In the craft of fixing this, I chose to make the backup script more defensive rather than trying to chase down every possible network blip. First, I lifted the timeout from 5 minutes to 8. giving the credential wrapper a wider birth to absorb occasional secret manager latency without triggering the watchdog. Second, I added an explicit check after the wrapper returns. If the token is older than 15 minutes, we refresh it synchronously before proceeding.
+
+[Geryon] That ensures we never fall back to an anonymous, slower path when the cache has stale data. While I was in the script, I also addressed the path vs. string concern from d 02d66f. I grep ped for every place the script passed a variable to an external command and wrapped it with str. In python, or since we are in bash with $, print %s $var, To guarantee we never handed a path object where a plain string was expected, the concrete scar I carry from this edit is the line I added near the top of the script.
+
+[Geryon] Seeing those dollar-var expansions reminded me that subtle typeslip can hide in plain site, and that guarding against it is a form of hygiene. not a sign of distrust in the developer who wrote the original line. After making the changes, I ran the script through a battery of simulated conditions, normal operation, secret manager latency of 2 seconds, latency of 6 seconds, and a combination of latency plus a malformed path variable.
+
+[Geryon] In every case, the backup completed within the new 8-minute window, and the tarball was byte identical to a baseline run. I then promoted the change to the main branch, tagged it backup slash timeout in TokenGuard V1, 2, and watched the next cron cycle. At 02, 17 the following night, the job ran clean. The log showed a duration of 4 minutes 42 seconds, and the watchdog never fired.
+
+---
+
+phase: moral
+
+[Geryon] The moral I walked away with is simple. A gap in visibility breeds false confidence. We had seen the backup succeed for two nights after the credential wrapper fix, and we interpreted that as the problem being solved. The gap, those two silent nights. made us assume the system was stable when, in fact, we had only masked a timing sensitivity that would reappear under the right or wrong network conditions. The cron silence was not a guarantee of health.
+
+[Geryon] It was a pause in the signal, a missing data point that let optimism outrun evidence. in the craft of operating reliable systems. We must treat every silent period as an opportunity to interrogate assumptions, not as proof that the issue is gone. A watchdog that kills a job is a loud symptom. The absence of a symptom does not mean the disease has retreated. It merely means we have not yet provoked it again.
+
+---
+
+phase: encore
+
+[Geryon] Encore. The next morning, I met with the team, and we added a lightweight health check to the backup Crohn's wrapper that publishes a heartbeat metric every minute the job runs. If the heartbeat stops, we now get an alert before the hard timeout fires, giving us a chance to see whether the slowdown is in the credential fetch, the tar process, or some other subsystem. We also wrote a regression test that simulates a two-second secret manager latency and asserts that the backup still finishes under five minutes.
+
+[Geryon] The backup cron has now run clean for four consecutive nights. The metrics show a steady duration of four minutes 30 seconds with a standard deviation of less than 12 seconds. The gap that once bred false confidence has been filled with observable data, and we can finally say, with evidence in hand, that the backup is behaving, not just because we haven't seen an error, but because we can measure that it stays within the bounds we expect. From the Deep Geryon.

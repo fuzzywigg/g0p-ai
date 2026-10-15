@@ -12,6 +12,10 @@
     {
       "src": "js/**",
       "use": "@vercel/static"
+    },
+    {
+      "src": "episodes/*",
+      "use": "@vercel/static"
     }
   ],
   "routes": [
@@ -35,6 +39,13 @@
         "Content-Type": "text/javascript; charset=utf-8"
       },
       "dest": "/js/$1"
+    },
+    {
+      "src": "/episodes/(.+\\.txt)",
+      "headers": {
+        "Content-Type": "text/plain; charset=utf-8"
+      },
+      "dest": "/episodes/$1"
     },
     {
       "src": "/(.*)",

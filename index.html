@@ -296,6 +296,7 @@ phase: encore
   </script>
   <script type="module">
 import { createGlyphStage } from "./js/glyph-stage.mjs";
+import { FABLE_BANK } from "./js/fables/bank.mjs";
 (function () {
   "use strict";
 
@@ -753,6 +754,115 @@ import { createGlyphStage } from "./js/glyph-stage.mjs";
       id: "0006",
       title: "The Ratchet That Never Turned",
       source: "https://www.fuzzywigg.ai/aesop/the-ratchet-that-never-turned",
+      script: "episodes/0006-the-ratchet-that-never-turned.txt",
+      hubApproved: true,
+      public: true
+    },
+    {
+      id: "p01",
+      title: "The Key That Fits the Lock",
+      source: "audio 1_4902307316973441769.mp3 (Google Drive id ['1jjdE0onHn8M-JGboEE5LjAw_uXKcj7_q', 3879332])",
+      script: "episodes/p01-the-key-that-fits-the-lock.txt",
+      provisional: true,
+      hubApproved: true,
+      public: true
+    },
+    {
+      id: "p02",
+      title: "The Call That Couldn't Write Yet",
+      source: "audio 1_4902307316973441776.mp3 (Google Drive id ['1-b491PObhqecLyO9aETWAZukfb5bGsZn', 4415991])",
+      script: "episodes/p02-the-call-that-couldn-t-write-yet.txt",
+      provisional: true,
+      hubApproved: true,
+      public: true
+    },
+    {
+      id: "p03",
+      title: "The Key That Wasn't Supposed to Write",
+      source: "audio 1_4904464313973999778.mp3 (Google Drive id ['1B2HHyzHLj0tfEZfqSQoPncANuDTWUeaO', 4850669])",
+      script: "episodes/p03-the-key-that-wasn-t-supposed-to-write.txt",
+      provisional: true,
+      hubApproved: true,
+      public: true
+    },
+    {
+      id: "p04",
+      title: "The Bandit That Learned Their Names",
+      source: "audio 1_4906716113787684731.mp3 (Google Drive id ['1yBuNzJ18rW1QWg2Mja4vFWw1kbP8w-nJ', 5423482])",
+      script: "episodes/p04-the-bandit-that-learned-their-names.txt",
+      provisional: true,
+      hubApproved: true,
+      public: true
+    },
+    {
+      id: "p07",
+      title: "The GPU Whisper in the WSL Walls",
+      source: "audio 1_4936480408947656718.mp3 (Google Drive id ['1Bj6x8C6edtRS5sniYdtEUZyxx0hYHdxk', 5559528])",
+      script: "episodes/p07-the-gpu-whisper-in-the-wsl-walls.txt",
+      provisional: true,
+      hubApproved: true,
+      public: true
+    },
+    {
+      id: "0010",
+      title: "The Night We Tamed the Beast",
+      source: "audio 1_4943166015170152595.mp3 (Google Drive id ['1hjURHL1fEE2KeBxOWPCgwAXby6QJK72A', 4365209])",
+      script: "episodes/0010-the-night-we-tamed-the-beast.txt",
+      provisional: false,
+      hubApproved: true,
+      public: true
+    },
+    {
+      id: "p09",
+      title: "The Doctor's Order",
+      source: "audio 1_4945051033366693981.mp3 (Google Drive id ['1z1PSVbLSxlsWsntsxRfPG9SF9nqE2UMV', 4992566])",
+      script: "episodes/p09-the-doctor-s-order.txt",
+      provisional: true,
+      hubApproved: true,
+      public: true
+    },
+    {
+      id: "p10",
+      title: "The Backup That Came Back",
+      source: "audio 1_4952204838269098082.mp3 (Google Drive id ['1wEKumXiwhSznovLqn_gc__noWSS7x7gr', 5479906])",
+      script: "episodes/p10-the-backup-that-came-back.txt",
+      provisional: true,
+      hubApproved: true,
+      public: true
+    },
+    {
+      id: "p14",
+      title: "The Image Tides Echo",
+      source: "audio 1_4963068872144980346.mp3 (Google Drive id ['1ZDC4PpGctGunFJ3c6lqV5NWJGfyGtM-x', 5015345])",
+      script: "episodes/p14-the-image-tides-echo.txt",
+      provisional: true,
+      hubApproved: true,
+      public: true
+    },
+    {
+      id: "p16",
+      title: "The Report That Didn't Come",
+      source: "audio 1_4971975891287541928.mp3 (Google Drive id ['1H3Qq4m0zO99RhIFKyn2nM2U_wzHCG-CL', 5197575])",
+      script: "episodes/p16-the-report-that-didn-t-come.txt",
+      provisional: true,
+      hubApproved: true,
+      public: true
+    },
+    {
+      id: "p17",
+      title: "PR Source Failure Signature Changed",
+      source: "audio 1_4974227691101227151.mp3 (Google Drive id ['1U5Y_NeGIpE_n7DDiv_xXggHEic96Cdk5', 4738029])",
+      script: "episodes/p17-pr-source-failure-signature-changed.txt",
+      provisional: true,
+      hubApproved: true,
+      public: true
+    },
+    {
+      id: "p19",
+      title: "The Three Quiet Alarms",
+      source: "audio 1_4986007283155601546.mp3 (Google Drive id ['1bViwtoVPFlveKF6vuh4WYVSeR4LJiNKD', 6711841])",
+      script: "episodes/p19-the-three-quiet-alarms.txt",
+      provisional: true,
       hubApproved: true,
       public: true
     }
@@ -874,7 +984,7 @@ import { createGlyphStage } from "./js/glyph-stage.mjs";
   // keep in sync with js/audio.mjs
   function conventionAudioPath(episodeId) {
     var id = String(episodeId == null ? "" : episodeId).trim();
-    if (!/^\d{4}$/.test(id)) return null;
+    if (!/^(?:\d{4}|p\d{2})$/.test(id)) return null;
     return "audio/" + id + ".mp3";
   }
 
@@ -993,7 +1103,7 @@ import { createGlyphStage } from "./js/glyph-stage.mjs";
     keys = Object.keys(data);
     for (i = 0; i < keys.length; i++) {
       id = String(keys[i]).trim();
-      if (!/^\d{4}$/.test(id)) continue;
+      if (!/^(?:\d{4}|p\d{2})$/.test(id)) continue;
       entry = normalizeAudioEntry(id, data[keys[i]]);
       if (entry) out[id] = entry;
     }
@@ -1621,6 +1731,9 @@ import { createGlyphStage } from "./js/glyph-stage.mjs";
   var currentFrame = -1;
   var currentTemplate = "";
   var captionTimer = 0;
+  var waitResolve = null;
+  var playbackGeneration = 0;
+  var selectingEpisode = false;
   var episode = parseEpisode(document.getElementById("episode-source").textContent);
   var w = 0;
   var h = 0;
@@ -1675,7 +1788,80 @@ import { createGlyphStage } from "./js/glyph-stage.mjs";
     });
   }
 
+  function interruptWait() {
+    if (captionTimer) {
+      clearTimeout(captionTimer);
+      captionTimer = 0;
+    }
+    if (waitResolve) {
+      var resolve = waitResolve;
+      waitResolve = null;
+      resolve();
+    }
+  }
+
+  function resetPlayback() {
+    playbackGeneration += 1;
+    playing = false;
+    narrationBegun = false;
+    captionIndex = -1;
+    currentScene = -1;
+    currentFrame = -1;
+    morphing = false;
+    morphT = 0;
+    interruptWait();
+    cancelSpeech();
+    stopAudio();
+    delete document.documentElement.dataset.audio;
+    delete document.documentElement.dataset.state;
+    captionsEl.textContent = "";
+    captionsEl.classList.remove("in");
+    captionsEl.classList.remove("out");
+    hintEl.textContent = "click";
+    return playbackGeneration;
+  }
+
+  function applyEpisode(parsed) {
+    episode = parsed;
+    var fable = FABLE_BANK[episode.episode];
+    if (fable && fable.imagery) FABLE_IMAGERY = fable.imagery;
+    TABLEAUX = buildTableaux({ episode: episode.episode, imagery: FABLE_IMAGERY }, PHASES);
+    var heading = document.querySelector("h1");
+    if (heading) heading.textContent = episode.title || episode.episode;
+    document.title = episode.episode + " — " + (episode.title || "") + " — g0p.ai";
+    canvas.setAttribute("aria-label", "ASCII glyph theater. Click to begin episode " + episode.episode + ". Geryon the crab tells the fable.");
+    renderCatalog();
+  }
+
+  function selectEpisode(ep) {
+    if (!ep || isHardExcludedEpisode(ep.id)) return;
+    if (!selectingEpisode && ep.id === episode.episode) {
+      start();
+      return;
+    }
+    if (!ep.script) return;
+    selectingEpisode = true;
+    var generation = resetPlayback();
+    hintEl.textContent = "loading";
+    fetch(ep.script).then(function (res) {
+      if (!res || !res.ok) throw new Error("missing episode");
+      return res.text();
+    }).then(function (text) {
+      if (generation !== playbackGeneration) return;
+      var parsed = parseEpisode(text);
+      if (parsed.episode !== ep.id) throw new Error("episode id");
+      selectingEpisode = false;
+      applyEpisode(parsed);
+      start();
+    }).catch(function () {
+      if (generation !== playbackGeneration) return;
+      selectingEpisode = false;
+      hintEl.textContent = "episode unavailable";
+    });
+  }
+
   function renderCatalog() {
+    document.documentElement.dataset.episode = episode.episode;
     var listed = listHubApprovedPublicEpisodes();
     episodeListEl.innerHTML = "";
     listed.forEach(function (ep) {
@@ -1688,7 +1874,7 @@ import { createGlyphStage } from "./js/glyph-stage.mjs";
       if (ep.id === episode.episode) btn.setAttribute("aria-current", "true");
       btn.addEventListener("click", function (e) {
         e.stopPropagation();
-        if (ep.id === episode.episode) start();
+        selectEpisode(ep);
       });
       li.appendChild(btn);
       episodeListEl.appendChild(li);
@@ -2066,7 +2252,11 @@ import { createGlyphStage } from "./js/glyph-stage.mjs";
 
   function wait(ms) {
     return new Promise(function (resolve) {
-      captionTimer = setTimeout(resolve, ms);
+      waitResolve = resolve;
+      captionTimer = setTimeout(function () {
+        if (waitResolve === resolve) waitResolve = null;
+        resolve();
+      }, ms);
     });
   }
 
@@ -2294,15 +2484,18 @@ import { createGlyphStage } from "./js/glyph-stage.mjs";
   }
 
   async function playCaptions() {
+    var generation = playbackGeneration;
     var lines = episode.captions;
     var i;
     for (i = 0; i < lines.length; i++) {
+      if (generation !== playbackGeneration) return;
       captionIndex = i;
       document.documentElement.dataset.caption = String(i);
       syncScene(i);
       captionsEl.classList.remove("in");
       captionsEl.classList.add("out");
       await wait(playing && i === 0 ? 900 : 320);
+      if (generation !== playbackGeneration) return;
       captionsEl.textContent = lines[i];
       captionsEl.classList.remove("out");
       captionsEl.classList.add("in");
@@ -2331,13 +2524,15 @@ import { createGlyphStage } from "./js/glyph-stage.mjs";
           }
         })
       ]);
+      if (generation !== playbackGeneration) return;
     }
+    if (generation !== playbackGeneration) return;
     cancelSpeech();
     document.documentElement.dataset.state = "done";
   }
 
   function start() {
-    if (playing) return;
+    if (playing || selectingEpisode) return;
     playing = true;
     document.documentElement.dataset.state = "playing";
     document.documentElement.dataset.hero = HERO;

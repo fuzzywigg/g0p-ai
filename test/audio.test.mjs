@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { readdirSync, readFileSync, statSync } from "node:fs";
-import { dirname, join } from "node:path";
+import { dirname, join, relative } from "node:path";
 import { fileURLToPath } from "node:url";
 import test from "node:test";
 import {
@@ -48,7 +48,12 @@ test("valid manifest maps an episode id to a url", () => {
 
 test("convention path is used only when the episode is listed", () => {
   assert.equal(conventionAudioPath("0006"), "audio/0006.mp3");
+  assert.equal(conventionAudioPath("p01"), "audio/p01.mp3");
+  assert.equal(conventionAudioPath("0010"), "audio/0010.mp3");
   assert.equal(conventionAudioPath("6"), null);
+  assert.equal(conventionAudioPath("p1"), null);
+  assert.equal(conventionAudioPath("P01"), null);
+  assert.equal(conventionAudioPath("p014"), null);
   assert.equal(conventionAudioPath("../0006"), null);
 
   const listed = parseAudioManifest('{ "0006": "audio/0006.mp3" }');
@@ -277,8 +282,25 @@ test("shipped 0006 narration skips the unspoken hook and locks later phases", ()
 
   const mp3 = join(root, "audio", "0006.mp3");
   assert.ok(statSync(mp3).size > 4_000_000);
-  const mp3s = walk(root).filter((path) => path.toLowerCase().endsWith(".mp3"));
-  assert.deepEqual(mp3s, [mp3]);
+  const mp3s = walk(root)
+    .filter((path) => path.toLowerCase().endsWith(".mp3"))
+    .map((path) => relative(root, path))
+    .sort();
+  assert.deepEqual(mp3s, [
+    "audio/0006.mp3",
+    "audio/0010.mp3",
+    "audio/p01.mp3",
+    "audio/p02.mp3",
+    "audio/p03.mp3",
+    "audio/p04.mp3",
+    "audio/p07.mp3",
+    "audio/p09.mp3",
+    "audio/p10.mp3",
+    "audio/p14.mp3",
+    "audio/p16.mp3",
+    "audio/p17.mp3",
+    "audio/p19.mp3",
+  ]);
 });
 
 test("inlined audio helpers match js/audio.mjs", () => {
@@ -341,6 +363,16 @@ test("inlined audio helpers match js/audio.mjs", () => {
     );
   }
   assert.equal(inline.conventionAudioPath("0006"), conventionAudioPath("0006"));
+  assert.equal(inline.conventionAudioPath("p01"), conventionAudioPath("p01"));
+  assert.equal(inline.conventionAudioPath("p1"), conventionAudioPath("p1"));
+  assert.equal(
+    inline.narrationSource({ p01: "audio/p01.mp3", nope: "audio/nope.mp3" }, "p01"),
+    narrationSource({ p01: "audio/p01.mp3", nope: "audio/nope.mp3" }, "p01"),
+  );
+  assert.equal(
+    inline.audioEntryForEpisode({ p07: true }, "p07").src,
+    audioEntryForEpisode({ p07: true }, "p07").src,
+  );
   const leadSegments = [
     { captions: ["hook one", "hook two"] },
     { captions: ["room aa bb", "room cc"], at: 4 },

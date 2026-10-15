@@ -1,0 +1,77 @@
+episode: p03
+title: The Key That Wasn't Supposed to Write
+source: audio 1_4904464313973999778.mp3 (Google Drive id ['1B2HHyzHLj0tfEZfqSQoPncANuDTWUeaO', 4850669])
+fetched: 2026-10-06 (wave1 trim+proof)
+provisional: true  # id assigned by upload order; episode number not spoken
+
+---
+
+phase: hook
+
+[Geryon] The Key That Wasn't Supposed to Write.
+
+[Geryon] The wrong answer to a 403 is wider permissions.
+
+---
+
+phase: room
+
+[Geryon] Early Sunday morning on August 16th, I was watching Geryon, the AI agent I've spent the better part of this year building. Try to push an image commit to Geryon pics. The push failed. GitHub sent back a 403. The error wasn't surprising once I looked at it. You The token Geryon was using was GitHub token, the fleet credential that lives in open clause environment and touches every cron job, every repo scan, every background task that needs to know what's happening in the org.
+
+[Geryon] I'd scoped it read-only, deliberately. The kind of credential that runs everywhere should not be able to write anywhere. That's just basic blast radius management. So technically, the system had worked exactly as designed. The wrong key tried to do the wrong thing, and the gate held. The problem was that Geryon had real work to do. It wasn't a test. It was trying to document something, push a commit, prove it had actually done the task I'd asked it to do.
+
+[Geryon] And now it was stuck. holding a valid goal and a locked door, waiting for me to decide what came next. That's the moment I want to tell you about. Not the 403 itself. That part's boring. The interesting part is the question the 403 forced. Do you widen the key or do you build a second door?
+
+---
+
+phase: itch
+
+[Geryon] The fast answer was obvious. I had a token in Google Cloud Secret Manager, Vault GitHub Pat Ultimate, a PAT with contents plus issues plus secrets write and admin read that would have cleared the 403 in 30 seconds. Just swapped the fleet token for the god mode PAT, pushed the commit, move on. I didn't do it, but I felt the pull. And I want to be honest about that pull, because that's where the real decision happened, not in the clean retrospective I'm riding now, but in the five minutes when just widen it was the obvious path.
+
+[Geryon] Here's what I was actually weighing. The fleet token is everywhere. It's in crons that run while I'm asleep. It's in the model registry scanner. that touches every repo in the org. It's in the heartbeat jobs, the wiki miners, the skills scanner. Every autonomous process Jirjan runs reaches for that credential. If I gave it right access, I wasn't just giving it access to push one photo repo. I was giving everything that could ever reach that token the ability to write to every repo in the org.
+
+[Geryon] Accidentally, quietly, without any log that flagged, this operation used elevated access. The blast radius wasn't theoretical. A few weeks earlier, a misconfigured model registry scan had already mutated the live gateway config, touched 40 paths, removed a back end. That wasn't a malicious act. It was automation doing something slightly outside its intended scope. Scope creep and automation isn't dramatic.
+
+[Geryon] It's a cron job that got one more permission than it needed, and then used it in a way nobody expected. Widening the fleet token wasn't really a 30-second fix. It was a decision to say. everything Geryon does autonomously can now write to GitHub. That's a different system than the one I'd built.
+
+---
+
+phase: turn
+
+[Geryon] The turn was recognizing that I was solving the wrong problem. The 403 wasn't telling me the fleet token was too narrow. It was telling me that Geryon needed a different token. One that existed for writing. held by a separate lane, with separate permissions and a separate audit trail. The thing I chose against, one credential that does everything. That model feels convenient right up until something goes wrong, and then you can't tell which part of the system caused the right, because every part had access.
+
+[Geryon] The thing I chose tiered lanes. A read lane for the fleet, background scans, content reads, org awareness. A write lane for deliberate publishing acts, commits, jists, repo updates. Two separate keys. Two separate contexts. A write should look different in the logs than a read, because it is different. If an automated write ever causes a problem, I want to know which lane it came from. immediately, without digging.
+
+[Geryon] The mechanics weren't actually complicated. What made it real was building the gate around it. If Geryon can request right access and have it granted without any human in the loop, then the two-lane architecture is decorative. The right lane needed a moment of accountability, something that said this particular window though. These operations are approved. That's where the PREITR permissions call came in. And 08, 15 daily voice call, two minutes on the existing Twilio rail, where I hear a brief, say yes or no or defer, and the working hours window opens or doesn't. The writer lane operates inside that window. Outside it, it waits.
+
+---
+
+phase: craft
+
+[Geryon] Here's what the writer lane actually looks like the token is GitHub pat right v2 Pointed at vault GitHub pat ultimate in GCP secret manager It has contents plus issues plus secrets right and admin read it can push commits create gist right issues It can't create organizations or touch billing the scope is narrow by design Not everything a GitHub admin can do, but the specific things Jirjan needs when it publishes work.
+
+[Geryon] The lane itself lives in docs slash writer lane. MD, a command reference that says which operations go through this credential and which don't. The commit log shows this working. 1A3-FA9F captures, agent right path equals writer lane. Never widen the fleet token, Geryonpix pushed via RiderKey logged. The push that failed as fleet token succeeded as RiderKey. Now the SCAR because there's always one.
+
+[Geryon] I got the scope wrong on the first PAT I tried. I'd pulled GitHub token from the end thinking it was the right capable one, because an older note in the op state had it labeled that way. It wasn't that note was stale. The PAT had been rotated and reclassified in a sweep two weeks earlier, and my docs hadn't caught up. So the first fix, I attempted failed for the same reason as the original 403, just with a more confusing error message.
+
+[Geryon] 40 minutes of debugging to realize I was reading the right label on the wrong token. Credential Notes Rod, the audit trail and secret manager matters more than any markdown file describing it, because the markdown file is a copy and cop is drift. After the writer lane was live, I spent an extra hour cross-checking every token label against its actual scopes in the vault. Not fun. Necessary.
+
+[Geryon] The permissions call. is the other half of the mechanism. Commit 3,287-C05. Preeder permissions call 0-8-15 daily. Yes-slash-no-slash defer. Less or equal two men on the existing Twilio rail. Every morning I get a voice brief. What did Geryon want to do? What's in the queue? Does the writer lane open today? It's not a big gate, it's a small gate. But small gates catch things moving quietly in the wrong direction, before the motion compounds into something harder to reverse.
+
+[Geryon] Preeder asks, I answer, the lane opens or it doesn't. That accountability is baked into the timing of the commit log. Zero A80E6B records. first live call answer drained YES to rider access. The yes is auditable. The system doesn't assume it.
+
+---
+
+phase: moral
+
+[Geryon] The wrong answer to a 403 is wider permissions. The right one is a narrower key. When automation hits a wall, the pressure is always to raise the ceiling. That's the fast path and it's usually the wrong one. in. A permission denied isn't asking you to grant more, it's asking you why the wrong credential was in the wrong place. Build the second lane, hold the first one narrow, put a small gate on the right path so the log shows when it opens and who said yes.
+
+[Geryon] The system that fails quietly is the one where everything can do everything. The system that holds is the one where each credential has exactly one job, and a right looks different from a read because they are genuinely different acts.
+
+---
+
+phase: encore
+
+[Geryon] The writer lane is live. The next step is Cloudflare OAuth on the same lane. Same accountability model. Same morning gate. Same audit trail. so Geryon can push to workers and pages with the same discipline it now applies to GitHub. Further out, the MetaHarness manage your path for the operations that nobody runs autonomously today and shouldn't, until there's something more formal than a two-minute phone call holding the door.
+
+[Geryon] If you're building anything that runs while you're asleep. Before you grant your automation a new permission, ask whether the operation it needs is genuinely the same kind of thing as what the credential already does. A scanner and a publisher are not the same kind of thing. Don't make them share a key. Build the second door. Geryon.

@@ -4,7 +4,7 @@
   "type": "module",
   "scripts": {
     "dev": "npx --yes serve .",
-    "build": "mkdir -p public/audio public/js && cp index.html public/index.html && cp -a audio/. public/audio/ && cp -a js/. public/js/",
+    "build": "mkdir -p public/audio public/js public/episodes && cp index.html public/index.html && cp -a audio/. public/audio/ && cp -a js/. public/js/ && cp -a episodes/. public/episodes/",
     "test": "node --test test/*.test.mjs"
   }
 }
