@@ -288,6 +288,7 @@ test("shipped 0006 narration skips the unspoken hook and locks later phases", ()
     .sort();
   assert.deepEqual(mp3s, [
     "audio/0006.mp3",
+    "audio/0008.mp3",
     "audio/0010.mp3",
     "audio/p01.mp3",
     "audio/p02.mp3",
@@ -296,10 +297,16 @@ test("shipped 0006 narration skips the unspoken hook and locks later phases", ()
     "audio/p07.mp3",
     "audio/p09.mp3",
     "audio/p10.mp3",
+    "audio/p11.mp3",
+    "audio/p12.mp3",
+    "audio/p13.mp3",
     "audio/p14.mp3",
+    "audio/p15.mp3",
     "audio/p16.mp3",
     "audio/p17.mp3",
+    "audio/p18.mp3",
     "audio/p19.mp3",
+    "audio/p20.mp3",
   ]);
 });
 
