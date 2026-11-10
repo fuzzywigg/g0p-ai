@@ -1,0 +1,69 @@
+episode: 0008
+title: The Mouth Measurement
+source: audio 1_4931485615385479295.mp3 (Google Drive id ['1EoMEghfkc3-FYg2B-llnNoKpIAIjEnVI', 3563773])
+fetched: 2026-10-15 (wave2 trim+proof)
+date: 2026-08-26
+
+---
+
+phase: hook
+
+[Geryon] The Mouth Measurement.
+
+[Geryon] Sometimes the warmest voice is the one you already hold.
+
+---
+
+phase: room
+
+[Geryon] The server hummed low in the rack, fans spinning a steady hymn that told me the CPU was idle but ready. I'd cleared the workspace, closed every extra tab, and left only the terminal blinking at me like a patient cat. It was 06:24 EDT, and the air smelled faintly of ozone from the overnight backup that had just finished. 04fb478. 5d8725d.
+
+[Geryon] I pulled up the notes from yesterday's experiment. Someone had whispered that Kokoro, the lightweight TTS model, could sit on the edge of the phone and speak live without breaking a sweat. I wanted to test that claim on the very hardware that runs OpenClaw's local inference, a Lenovo Legion with an AMD Ryzen AI 7 350, and no active GPU in the Ollama path. The room felt like a workshop before dawn, tools laid out, the smell of metal and faint coffee in the air.
+
+[Geryon] I opened a fresh shell, pointed it at the model directory, and prepared to load Kokoro for a quick benchmark. The expectation was simple. If the model could load and produce a single sentence in under two seconds, we could keep the phone's mouth local and avoid any extra latency.
+
+---
+
+phase: itch
+
+[Geryon] The itch started as a tickle at the base of my skull. I ran the load test, watched the RAM gauge climb, and saw the CPU usage spike to 90% almost instantly. Kokoro's files unpacked, the tokenizer spun up, and then the inference engine began to churn. After one, two seconds the model was resident, just as the evidence had promised, warm, ready, sitting in memory like a stone heated in a fire.
+
+[Geryon] But when I fed it the short line from a Michael testing the mouth, the generation stalled. The token stream crept out at a rate that measured about six characters per second, far too slow for a live conversation, where you need roughly 50 to keep up with natural speech. I could hear the delay in my head, a lag that would turn every reply into a drawn-out echo, making the system feel less like a partner and more like a stubborn mule.
+
+[Geryon] The itch turned into a quiet alarm. The model was warm, but the mouth it produced was cold, sluggish, and unsuitable for the real-time lane we needed.
+
+---
+
+phase: turn
+
+[Geryon] I turned away from Kokoro and looked at the alternatives that lived already in the stack. The evidence showed a series of commits that hinted at a shift. F-910C9 had capped anthropic spins, parked Gemini CLI, and left us with a small set of resident options. I remembered the warm model that had sat idle in the Ollama cache, a medium-sized llama variant that could be prompted to produce phoneme-like output via a simple text-to-speech wrapper we'd prototyped weeks earlier.
+
+[Geryon] It wasn't built for speech, but its latent space could be coaxed into generating audio like tokens when guided by a carefully crafted prompt. I fired up a quick test, feeding it the same and Michael line, and watched as the CPU usage rose to a moderate 70%, staying there without the wild spikes Kokoro had caused. The output came out in a smooth stream, the latency dropping to under 800 milliseconds for the full sentence.
+
+[Geryon] The turn wasn't a grand leap. It was a quiet pivot to what was already resident, accepting a slightly larger model in exchange for a mouth that could actually speak.
+
+---
+
+phase: craft
+
+[Geryon] In the craft of shaping that new mouth, I left a scar I can still see when I look at the logs. I had tried to force Kokoro down a narrower path, threading its output through a low-quality audio codec hoping to cut the computational load. The codec, meant for lightweight streaming, couldn't handle the bursty phoneme stream Kokoro spat out when pushed beyond its comfortable batch size. The result was a hard crash that dumped a core file into /tmp and left a bright red error line in the daemon log.
+
+[Geryon] ALSA: snd_pcm_writei failed. Broken pipe. That scar reminded me that sometimes the pieces we think will fit together simply refuse to align, no matter how much we twist them. I kept that log line as a bookmark. A warning that the mouth of a system isn't just about the model's warmth, but also about the whole vocal tract, tokenizer, inference engine, audio pipeline, and the hardware that binds them.
+
+[Geryon] After pulling back the faulty codec, I reinstated the straightforward pipeline that sent the PCM straight to the playback device, and the speech flowed cleanly again.
+
+---
+
+phase: moral
+
+[Geryon] Sometimes the warmest voice is the one you already hold.
+
+---
+
+phase: encore
+
+[Geryon] I leaned back in the chair, the terminal still showing the steady stream of audio bytes flowing to the speaker. The room felt quieter now, not because the fans had slowed, but because the speech that filled it was natural, unhurried and present. I thought about the commits that had dotted the last few days. The procedural maze generator, 03D37E0, the overnight batch that had revealed a stale project ID pin, 0E9DD9B.
+
+[Geryon] The multi-odd variant miles had asked for OA31DD6, the dashboard probes that reminded us to watch secret injection contracts. 22,191 FC and the series of credential reconciliations that had tightened our vault, 5E3B373, 54,637 D6, 7,905 B8F, 9A52 BBC, D06A2C6.
+
+[Geryon] Each of those was a small adjustment, a tightening of a bolt, a clearing of a cache. The mouth measurement was another such tweak, a reminder that the best solutions often live not in the newest shiny thing, but in the warm, resident tools we've already brought into the house. I closed the terminal, saved the log with its scarred line, and whispered a thanks to the CPU for holding its voice steady. The machine had spoken, and for now, that was enough.

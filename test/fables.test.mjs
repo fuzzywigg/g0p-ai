@@ -28,6 +28,13 @@ test("every hub fable paints the Aesop phase map", () => {
     "p16",
     "p17",
     "p19",
+    "0008",
+    "p11",
+    "p12",
+    "p13",
+    "p15",
+    "p18",
+    "p20",
   ]);
   for (const [id, fable] of Object.entries(FABLE_BANK)) {
     assert.equal(fable.episode, id);

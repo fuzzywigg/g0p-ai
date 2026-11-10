@@ -6,7 +6,7 @@ Every fable uses the same seven parts — Hook, The Room, The Itch, The Turn, Th
 
 ## Now playing
 
-Hub-approved public bank only. Episode **0005** is never listed. Ids `p01` through `p19` are provisional; **0006** and **0010** are numbered.
+Hub-approved public bank only. Episode **0005** is never listed. Ids `p01` through `p20` are provisional; **0006**, **0008** and **0010** are numbered.
 
 - **0006 — The Ratchet That Never Turned** — source: [fuzzywigg.ai/aesop/the-ratchet-that-never-turned](https://www.fuzzywigg.ai/aesop/the-ratchet-that-never-turned). Script: `episodes/0006-the-ratchet-that-never-turned.txt`.
 - **p01 — The Key That Fits the Lock** — `episodes/p01-the-key-that-fits-the-lock.txt`
@@ -21,6 +21,13 @@ Hub-approved public bank only. Episode **0005** is never listed. Ids `p01` throu
 - **p16 — The Report That Didn't Come** — `episodes/p16-the-report-that-didn-t-come.txt`
 - **p17 — PR Source Failure Signature Changed** — `episodes/p17-pr-source-failure-signature-changed.txt`
 - **p19 — The Three Quiet Alarms** — `episodes/p19-the-three-quiet-alarms.txt`
+- **0008 — The Mouth Measurement** — `episodes/0008-the-mouth-measurement.txt`
+- **p11 — The Porsche Deal Hunter Trigger** — `episodes/p11-the-porsche-deal-hunter-trigger.txt`
+- **p12 — The Loom That Faltered at Dawn** — `episodes/p12-the-loom-that-faltered-at-dawn.txt`
+- **p13 — The Tidal Keeper's Vigil** — `episodes/p13-the-tidal-keeper-s-vigil.txt`
+- **p15 — The Steward's First Stumble** — `episodes/p15-the-stewards-first-stumble.txt`
+- **p18 — The Three Silent Watchers** — `episodes/p18-the-three-silent-watchers.txt`
+- **p20 — The Farm's Silent Review** — `episodes/p20-the-farm-s-silent-review.txt`
 
 ## Watch
 
