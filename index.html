@@ -74,6 +74,29 @@
       cursor: pointer;
     }
     #replay[hidden] { display: none !important; }
+    canvas:focus { outline: none; }
+    canvas:focus-visible,
+    #replay:focus-visible,
+    #share-episode:focus-visible,
+    #mute-toggle:focus-visible,
+    #voice-picker:focus-visible,
+    #episode-list button:focus-visible {
+      outline: 2px solid rgba(255, 255, 255, 0.92);
+      outline-offset: 3px;
+    }
+    #playback-status {
+      position: fixed;
+      left: calc(0.9rem + env(safe-area-inset-left));
+      bottom: calc(0.45rem + env(safe-area-inset-bottom));
+      z-index: 6;
+      margin: 0;
+      pointer-events: none;
+      font-size: 0.68rem;
+      letter-spacing: 0.22em;
+      text-transform: lowercase;
+      color: var(--mute);
+    }
+    html[data-state="idle"] #playback-status { visibility: hidden; }
     html[data-phone-stage="1"] #replay {
       bottom: calc(28vh + 0.75rem);
     }
@@ -246,6 +269,7 @@
   <canvas id="field" aria-label="ASCII glyph theater. Click to begin episode 0006. Geryon the crab tells the fable."></canvas>
   <div id="hint">click</div>
   <button type="button" id="replay" hidden>replay</button>
+  <p id="playback-status" aria-live="polite"></p>
   <div id="stage-ui">
     <nav id="catalog" aria-label="Hub-approved public episodes">
       <p class="catalog-label">episodes</p>
@@ -367,6 +391,7 @@ import { shareAction, sharePayload } from "./js/share.mjs";
 import { reducedMotionTransition } from "./js/reduced-motion.mjs";
 import { hiddenPlaybackPlan, shownPlaybackPlan } from "./js/visibility.mjs";
 import { replayReset } from "./js/replay.mjs";
+import { keyboardActivatesTheater, playbackStatusText } from "./js/theater-keys.mjs";
 (function () {
   "use strict";
 
@@ -1846,6 +1871,7 @@ import { replayReset } from "./js/replay.mjs";
   var episodeListEl = document.getElementById("episode-list");
   var shareBtn = document.getElementById("share-episode");
   var replayBtn = document.getElementById("replay");
+  var playbackStatus = document.getElementById("playback-status");
   var muteToggle = document.getElementById("mute-toggle");
   var voicePicker = document.getElementById("voice-picker");
   var speechStatus = document.getElementById("speech-status");
@@ -1966,6 +1992,7 @@ import { replayReset } from "./js/replay.mjs";
     captionsEl.classList.remove("out");
     hintEl.textContent = "click";
     syncReplay();
+    syncPlaybackStatus();
     return playbackGeneration;
   }
 
@@ -1976,9 +2003,15 @@ import { replayReset } from "./js/replay.mjs";
     replayBtn.hidden = !done;
   }
 
+  function syncPlaybackStatus() {
+    if (!playbackStatus) return;
+    playbackStatus.textContent = playbackStatusText(document.documentElement.dataset.state || "idle");
+  }
+
   function markDone() {
     document.documentElement.dataset.state = "done";
     syncReplay();
+    syncPlaybackStatus();
     if (!replayBtn) return;
     var active = document.activeElement;
     if (!active || active === document.body || active === canvas) replayBtn.focus();
@@ -2892,6 +2925,7 @@ import { replayReset } from "./js/replay.mjs";
     document.documentElement.dataset.state = "playing";
     document.documentElement.dataset.hero = HERO;
     syncReplay();
+    syncPlaybackStatus();
     hintEl.textContent = "";
     if (window.speechSynthesis && typeof window.speechSynthesis.getVoices === "function") {
       window.speechSynthesis.getVoices();
@@ -2915,8 +2949,11 @@ import { replayReset } from "./js/replay.mjs";
   function onActivate(e) {
     if (e.target && e.target.closest && e.target.closest("#stage-ui")) return;
     if (e.target && e.target.id === "replay") return;
-    if (e.type === "keydown" && e.key !== "Enter" && e.key !== " ") return;
-    if (e.type === "keydown") e.preventDefault();
+    if (e.type === "keydown") {
+      var targetId = e.target && e.target.id ? e.target.id : "";
+      if (!keyboardActivatesTheater(targetId, e.key)) return;
+      e.preventDefault();
+    }
     if (document.documentElement.dataset.state === "done") {
       replayEpisode();
       return;
@@ -2934,6 +2971,7 @@ import { replayReset } from "./js/replay.mjs";
   window.addEventListener("pagehide", stopPlayback);
   document.addEventListener("visibilitychange", onVisibilityChange);
   canvas.setAttribute("tabindex", "0");
+  canvas.setAttribute("aria-keyshortcuts", "Enter Space");
   stageUi.addEventListener("click", function (e) { e.stopPropagation(); });
   stageUi.addEventListener("keydown", function (e) { e.stopPropagation(); });
 
@@ -2971,6 +3009,7 @@ import { replayReset } from "./js/replay.mjs";
     return ok;
   }
 
+  replayBtn.setAttribute("aria-keyshortcuts", "Enter Space");
   replayBtn.addEventListener("click", function (e) {
     e.stopPropagation();
     replayEpisode();
@@ -3080,6 +3119,8 @@ import { replayReset } from "./js/replay.mjs";
     motionQuery.addListener(onReduceMotionChange);
   }
 
+  syncPlaybackStatus();
+  if (!previewStill && document.activeElement === document.body) canvas.focus();
   frameHandle = requestAnimationFrame(frame);
 })();
   </script>
