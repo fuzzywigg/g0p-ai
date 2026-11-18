@@ -176,6 +176,37 @@
         transform: none;
       }
     }
+    /* iPhone SE widths (max-width: 375px): captions live in a bottom dock. */
+    @media (max-width: 375px) {
+      #caption-wrap {
+        overflow-x: hidden;
+        overflow-y: auto;
+        background: #000;
+        pointer-events: auto;
+      }
+      #captions { min-height: 0; font-size: 0.78rem; }
+      #catalog {
+        max-width: calc(100vw - 8.75rem);
+        max-height: 18vh;
+        overflow: auto;
+      }
+      #speech-controls { max-width: 7.25rem; }
+      #voice-picker { max-width: 6.5rem; }
+    }
+    html[data-phone-stage="1"] #caption-wrap {
+      overflow-x: hidden;
+      overflow-y: auto;
+      background: #000;
+      pointer-events: auto;
+    }
+    html[data-phone-stage="1"] #captions { min-height: 0; font-size: 0.78rem; }
+    html[data-phone-stage="1"] #catalog {
+      max-width: calc(100vw - 8.75rem);
+      max-height: 18vh;
+      overflow: auto;
+    }
+    html[data-phone-stage="1"] #speech-controls { max-width: 7.25rem; }
+    html[data-phone-stage="1"] #voice-picker { max-width: 6.5rem; }
   </style>
 </head>
 <body>
@@ -297,6 +328,7 @@ phase: encore
   <script type="module">
 import { createGlyphStage } from "./js/glyph-stage.mjs";
 import { FABLE_BANK } from "./js/fables/bank.mjs";
+import { heroStageSize } from "./js/phone-stage.mjs";
 (function () {
   "use strict";
 
@@ -1944,14 +1976,24 @@ import { FABLE_BANK } from "./js/fables/bank.mjs";
     });
   }
 
+  var captionWrap = document.getElementById("caption-wrap");
+
   function resize() {
-    w = window.innerWidth;
-    h = window.innerHeight;
+    var stage = heroStageSize(window.innerWidth, window.innerHeight);
+    w = stage.width;
+    h = stage.height;
+    if (stage.phone) document.documentElement.dataset.phoneStage = "1";
+    else delete document.documentElement.dataset.phoneStage;
+    if (captionWrap) {
+      captionWrap.style.height = stage.phone ? stage.captionDock + "px" : "";
+      captionWrap.style.maxHeight = stage.phone ? stage.captionDock + "px" : "";
+    }
     dpr = Math.max(1, Math.min(2, window.devicePixelRatio || 1));
     canvas.width = Math.floor(w * dpr);
     canvas.height = Math.floor(h * dpr);
     canvas.style.width = w + "px";
     canvas.style.height = h + "px";
+    canvas.style.bottom = stage.phone ? "auto" : "";
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
     glyphStage.resize(w, h);
     if (playing) {
