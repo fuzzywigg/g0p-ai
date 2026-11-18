@@ -6,6 +6,14 @@
   <meta name="theme-color" content="#000000" />
   <title>0006 — The Ratchet That Never Turned — g0p.ai</title>
   <meta name="description" content="Aesop ASCII theater. Episode 0006: The Ratchet That Never Turned." />
+  <link rel="canonical" href="https://g0p-ai.vercel.app/" />
+  <meta property="og:type" content="website" />
+  <meta property="og:title" content="The Ratchet That Never Turned" />
+  <meta property="og:description" content="Aesop ASCII theater. Episode 0006: The Ratchet That Never Turned." />
+  <meta property="og:url" content="https://g0p-ai.vercel.app/" />
+  <meta name="twitter:card" content="summary" />
+  <meta name="twitter:title" content="The Ratchet That Never Turned" />
+  <meta name="twitter:description" content="Aesop ASCII theater. Episode 0006: The Ratchet That Never Turned." />
   <style>
     :root {
       color-scheme: dark;
@@ -155,6 +163,7 @@
       align-items: flex-end;
       gap: 0.35rem;
     }
+    #share-episode,
     #mute-toggle,
     #voice-picker {
       font: inherit;
@@ -165,6 +174,7 @@
       padding: 0.35rem 0.55rem;
     }
     #voice-picker { max-width: 14rem; }
+    #share-episode,
     #mute-toggle { cursor: pointer; letter-spacing: 0.12em; text-transform: lowercase; }
     html[data-speech="off"] #speech-status,
     html[data-speech="muted"] #speech-status { display: block; }
@@ -219,6 +229,7 @@
       <ul id="episode-list"></ul>
     </nav>
     <div id="speech-controls">
+      <button type="button" id="share-episode">share</button>
       <button type="button" id="mute-toggle" aria-pressed="false">mute</button>
       <label class="voice-label">voice
         <select id="voice-picker" aria-label="Voice"></select>
@@ -329,6 +340,7 @@ phase: encore
 import { createGlyphStage } from "./js/glyph-stage.mjs";
 import { FABLE_BANK } from "./js/fables/bank.mjs";
 import { heroStageSize } from "./js/phone-stage.mjs";
+import { shareAction, sharePayload } from "./js/share.mjs";
 (function () {
   "use strict";
 
@@ -1806,6 +1818,7 @@ import { heroStageSize } from "./js/phone-stage.mjs";
   var captionsEl = document.getElementById("captions");
   var hintEl = document.getElementById("hint");
   var episodeListEl = document.getElementById("episode-list");
+  var shareBtn = document.getElementById("share-episode");
   var muteToggle = document.getElementById("mute-toggle");
   var voicePicker = document.getElementById("voice-picker");
   var speechStatus = document.getElementById("speech-status");
@@ -2679,6 +2692,53 @@ import { heroStageSize } from "./js/phone-stage.mjs";
   canvas.setAttribute("tabindex", "0");
   stageUi.addEventListener("click", function (e) { e.stopPropagation(); });
   stageUi.addEventListener("keydown", function (e) { e.stopPropagation(); });
+
+  function copyShareLink(url) {
+    function finish(ok) {
+      shareBtn.textContent = ok ? "copied" : "copy failed";
+      setTimeout(function () {
+        if (shareBtn.textContent === "copied" || shareBtn.textContent === "copy failed") {
+          shareBtn.textContent = "share";
+        }
+      }, 1600);
+    }
+    if (navigator.clipboard && typeof navigator.clipboard.writeText === "function") {
+      navigator.clipboard.writeText(url).then(function () {
+        finish(true);
+      }).catch(function () {
+        finish(fallbackCopy(url));
+      });
+      return;
+    }
+    finish(fallbackCopy(url));
+  }
+
+  function fallbackCopy(url) {
+    var input = document.createElement("textarea");
+    input.value = url;
+    input.setAttribute("readonly", "");
+    input.style.position = "fixed";
+    input.style.left = "-9999px";
+    document.body.appendChild(input);
+    input.select();
+    var ok = false;
+    try { ok = document.execCommand("copy"); } catch (err) { ok = false; }
+    document.body.removeChild(input);
+    return ok;
+  }
+
+  shareBtn.addEventListener("click", function (e) {
+    e.stopPropagation();
+    var payload = sharePayload();
+    if (shareAction({ canShare: typeof navigator.share === "function" }) === "share") {
+      navigator.share(payload).catch(function (err) {
+        if (err && err.name === "AbortError") return;
+        copyShareLink(payload.url);
+      });
+      return;
+    }
+    copyShareLink(payload.url);
+  });
 
   muteToggle.addEventListener("click", function (e) {
     e.stopPropagation();
