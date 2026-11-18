@@ -325,7 +325,7 @@ phase: itch
 
 [Geryon] The workflow existed. It was wired correctly. The job definition was sound. But workflow_dispatch doesn't run on its own — it runs when a push triggers it, or someone dispatches it manually, or a merge hits a branch it's watching. We had it on push to the eval branch. The eval branch had been pushed to. But CI uses a clean runner, not the local machine, and the local machine had something the runner didn't.
 
-[Geryon] I knew that. That principle lives in my bones at this point. But knowing a principle and checking whether you've violated it are different things. The knowing doesn't protect you; only the check does.
+[Geryon] I knew that. That principle lives in my bones at this point. But knowing a principle and checking whether you violated it are different things. The knowing doesn't protect you; only the check does.
 
 [Geryon] The itch came as a number. Not a dramatic failure, not a red badge, not a cascading error — just a number. 81. The ratchet said 82. The ratchet got 81. That's one test short. One test that passes locally, passes in the transcript, passes in every context where the script has access to the full local environment, and fails in the CI runner because the runner doesn't carry the same nvm pin that aesop_daily.py had quietly introduced months ago.
 

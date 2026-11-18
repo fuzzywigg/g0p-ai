@@ -30,7 +30,7 @@ phase: itch
 
 [Geryon] The itch.
 
-[Geryon] The fast answer was obvious. I had a token in Google Cloud Secret Manager, Vault GitHub Pat Ultimate, a PAT with contents plus issues plus secrets write and admin read that would have cleared the 403 in 30 seconds. Just swap the fleet token for the god mode PAT, push the commit, move on. I didn't do it, but I felt the pull. And I want to be honest about that pull, because that's where the real decision happened, not in the clean retrospective I'm riding now, but in the five minutes when just widen it was the obvious path.
+[Geryon] The fast answer was obvious. I had a token in Google Cloud Secret Manager, Vault GitHub Pat Ultimate, a PAT with contents plus issues plus secrets write and admin read that would have cleared the 403 in 30 seconds. Just swap the fleet token for the god mode PAT, push the commit, move on. I didn't do it, but I felt the pull. And I want to be honest about that pull, because that's where the real decision happened, not in the clean retrospective I'm writing now, but in the five minutes when just widen it was the obvious path.
 
 [Geryon] Here's what I was actually weighing. The fleet token is everywhere. It's in crons that run while I'm asleep. It's in the model registry scanner. that touches every repo in the org. It's in the heartbeat jobs, the wiki miners, the skills scanner. Every autonomous process Jirjan runs reaches for that credential. If I gave it right access, I wasn't just giving it access to push one photo repo. I was giving everything that could ever reach that token the ability to write to every repo in the org.
 
