@@ -4,16 +4,16 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
   <meta name="theme-color" content="#000000" />
-  <title>0006 — The Ratchet That Never Turned — g0p.ai</title>
-  <meta name="description" content="Aesop ASCII theater. Episode 0006: The Ratchet That Never Turned." />
+  <title>05 — The Ratchet That Never Turned — g0p.ai</title>
+  <meta name="description" content="Aesop ASCII theater. Episode 05: The Ratchet That Never Turned." />
   <link rel="canonical" href="https://g0p-ai.vercel.app/" />
   <meta property="og:type" content="website" />
   <meta property="og:title" content="The Ratchet That Never Turned" />
-  <meta property="og:description" content="Aesop ASCII theater. Episode 0006: The Ratchet That Never Turned." />
+  <meta property="og:description" content="Aesop ASCII theater. Episode 05: The Ratchet That Never Turned." />
   <meta property="og:url" content="https://g0p-ai.vercel.app/" />
   <meta name="twitter:card" content="summary" />
   <meta name="twitter:title" content="The Ratchet That Never Turned" />
-  <meta name="twitter:description" content="Aesop ASCII theater. Episode 0006: The Ratchet That Never Turned." />
+  <meta name="twitter:description" content="Aesop ASCII theater. Episode 05: The Ratchet That Never Turned." />
   <style>
     :root {
       color-scheme: dark;
@@ -266,7 +266,7 @@
 </head>
 <body>
   <h1>The Ratchet That Never Turned</h1>
-  <canvas id="field" aria-label="ASCII glyph theater. Click to begin episode 0006. Geryon the crab tells the fable."></canvas>
+  <canvas id="field" aria-label="ASCII glyph theater. Click to begin episode 05. Geryon the crab tells the fable."></canvas>
   <div id="hint">click</div>
   <button type="button" id="replay" hidden>replay</button>
   <p id="playback-status" aria-live="polite"></p>
@@ -402,6 +402,11 @@ import { reducedMotionTransition } from "./js/reduced-motion.mjs";
 import { hiddenPlaybackPlan, shownPlaybackPlan } from "./js/visibility.mjs";
 import { replayReset } from "./js/replay.mjs";
 import { keyboardActivatesTheater, playbackStatusText } from "./js/theater-keys.mjs";
+import {
+  isHardExcludedEpisode,
+  listHubApprovedPublicEpisodes,
+  viewerEpisodeLabel,
+} from "./js/catalog.mjs";
 (function () {
   "use strict";
 
@@ -729,7 +734,31 @@ import { keyboardActivatesTheater, playbackStatusText } from "./js/theater-keys.
   }
 
 
-  var TABLEAUX = buildTableaux({ episode: "0006", imagery: FABLE_IMAGERY }, PHASES);
+  var OPENING_EPISODE_ID = "0006";
+
+  function viewerImagery(imagery, label) {
+    var copy = {};
+    var key;
+    for (key in imagery) {
+      if (Object.prototype.hasOwnProperty.call(imagery, key)) copy[key] = imagery[key];
+    }
+    if (copy.encore && label) {
+      var encore = {};
+      for (key in copy.encore) {
+        if (Object.prototype.hasOwnProperty.call(copy.encore, key)) encore[key] = copy.encore[key];
+      }
+      encore.title = label;
+      copy.encore = encore;
+    }
+    return copy;
+  }
+
+  function tableauxFor(storageId, imagery) {
+    var label = viewerEpisodeLabel(storageId) || storageId;
+    return buildTableaux({ episode: label, imagery: viewerImagery(imagery, label) }, PHASES);
+  }
+
+  var TABLEAUX = tableauxFor(OPENING_EPISODE_ID, FABLE_IMAGERY);
 
   function phaseAt(index) {
     var last = PHASES.length - 1;
@@ -852,207 +881,6 @@ import { keyboardActivatesTheater, playbackStatusText } from "./js/theater-keys.
     return Math.min(12000, Math.max(2800, ms));
   }
 
-  // keep in sync with js/catalog.mjs
-  var EXCLUDED_EPISODE_ID = "0005";
-  var HUB_APPROVED_PUBLIC_BANK = [
-    {
-      id: "0006",
-      title: "The Ratchet That Never Turned",
-      source: "https://www.fuzzywigg.ai/aesop/the-ratchet-that-never-turned",
-      script: "episodes/0006-the-ratchet-that-never-turned.txt",
-      hubApproved: true,
-      public: true
-    },
-    {
-      id: "p01",
-      title: "The Key That Fits the Lock",
-      source: "audio 1_4902307316973441769.mp3 (Google Drive id ['1jjdE0onHn8M-JGboEE5LjAw_uXKcj7_q', 3879332])",
-      script: "episodes/p01-the-key-that-fits-the-lock.txt",
-      provisional: true,
-      hubApproved: true,
-      public: true
-    },
-    {
-      id: "p02",
-      title: "The Call That Couldn't Write Yet",
-      source: "audio 1_4902307316973441776.mp3 (Google Drive id ['1-b491PObhqecLyO9aETWAZukfb5bGsZn', 4415991])",
-      script: "episodes/p02-the-call-that-couldn-t-write-yet.txt",
-      provisional: true,
-      hubApproved: true,
-      public: true
-    },
-    {
-      id: "p03",
-      title: "The Key That Wasn't Supposed to Write",
-      source: "audio 1_4904464313973999778.mp3 (Google Drive id ['1B2HHyzHLj0tfEZfqSQoPncANuDTWUeaO', 4850669])",
-      script: "episodes/p03-the-key-that-wasn-t-supposed-to-write.txt",
-      provisional: true,
-      hubApproved: true,
-      public: true
-    },
-    {
-      id: "p04",
-      title: "The Bandit That Learned Their Names",
-      source: "audio 1_4906716113787684731.mp3 (Google Drive id ['1yBuNzJ18rW1QWg2Mja4vFWw1kbP8w-nJ', 5423482])",
-      script: "episodes/p04-the-bandit-that-learned-their-names.txt",
-      provisional: true,
-      hubApproved: true,
-      public: true
-    },
-    {
-      id: "p07",
-      title: "The GPU Whisper in the WSL Walls",
-      source: "audio 1_4936480408947656718.mp3 (Google Drive id ['1Bj6x8C6edtRS5sniYdtEUZyxx0hYHdxk', 5559528])",
-      script: "episodes/p07-the-gpu-whisper-in-the-wsl-walls.txt",
-      provisional: true,
-      hubApproved: true,
-      public: true
-    },
-    {
-      id: "0010",
-      title: "The Night We Tamed the Beast",
-      source: "audio 1_4943166015170152595.mp3 (Google Drive id ['1hjURHL1fEE2KeBxOWPCgwAXby6QJK72A', 4365209])",
-      script: "episodes/0010-the-night-we-tamed-the-beast.txt",
-      provisional: false,
-      hubApproved: true,
-      public: true
-    },
-    {
-      id: "p09",
-      title: "The Doctor's Order",
-      source: "audio 1_4945051033366693981.mp3 (Google Drive id ['1z1PSVbLSxlsWsntsxRfPG9SF9nqE2UMV', 4992566])",
-      script: "episodes/p09-the-doctor-s-order.txt",
-      provisional: true,
-      hubApproved: true,
-      public: true
-    },
-    {
-      id: "p10",
-      title: "The Backup That Came Back",
-      source: "audio 1_4952204838269098082.mp3 (Google Drive id ['1wEKumXiwhSznovLqn_gc__noWSS7x7gr', 5479906])",
-      script: "episodes/p10-the-backup-that-came-back.txt",
-      provisional: true,
-      hubApproved: true,
-      public: true
-    },
-    {
-      id: "p14",
-      title: "The Image Tides Echo",
-      source: "audio 1_4963068872144980346.mp3 (Google Drive id ['1ZDC4PpGctGunFJ3c6lqV5NWJGfyGtM-x', 5015345])",
-      script: "episodes/p14-the-image-tides-echo.txt",
-      provisional: true,
-      hubApproved: true,
-      public: true
-    },
-    {
-      id: "p16",
-      title: "The Report That Didn't Come",
-      source: "audio 1_4971975891287541928.mp3 (Google Drive id ['1H3Qq4m0zO99RhIFKyn2nM2U_wzHCG-CL', 5197575])",
-      script: "episodes/p16-the-report-that-didn-t-come.txt",
-      provisional: true,
-      hubApproved: true,
-      public: true
-    },
-    {
-      id: "p17",
-      title: "PR Source Failure Signature Changed",
-      source: "audio 1_4974227691101227151.mp3 (Google Drive id ['1U5Y_NeGIpE_n7DDiv_xXggHEic96Cdk5', 4738029])",
-      script: "episodes/p17-pr-source-failure-signature-changed.txt",
-      provisional: true,
-      hubApproved: true,
-      public: true
-    },
-    {
-      id: "p19",
-      title: "The Three Quiet Alarms",
-      source: "audio 1_4986007283155601546.mp3 (Google Drive id ['1bViwtoVPFlveKF6vuh4WYVSeR4LJiNKD', 6711841])",
-      script: "episodes/p19-the-three-quiet-alarms.txt",
-      provisional: true,
-      hubApproved: true,
-      public: true
-    },
-    {
-      id: "0008",
-      title: "The Mouth Measurement",
-      source: "audio 1_4931485615385479295.mp3 (Google Drive id ['1EoMEghfkc3-FYg2B-llnNoKpIAIjEnVI', 3563773])",
-      script: "episodes/0008-the-mouth-measurement.txt",
-      provisional: false,
-      hubApproved: true,
-      public: true
-    },
-    {
-      id: "p11",
-      title: "The Porsche Deal Hunter Trigger",
-      source: "audio 1_4956508455629227675.mp3 (Google Drive id ['11u8lAoTCUB9xMaLJUIGwWJ9A6Giv-bjk', 6232024])",
-      script: "episodes/p11-the-porsche-deal-hunter-trigger.txt",
-      provisional: true,
-      hubApproved: true,
-      public: true
-    },
-    {
-      id: "p12",
-      title: "The Loom That Faltered at Dawn",
-      source: "audio 1_4958760255442913123.mp3 (Google Drive id ['1JUyqf4f8EEVxB6drvymG5EZeKZl8BVKH', 2345839])",
-      script: "episodes/p12-the-loom-that-faltered-at-dawn.txt",
-      provisional: true,
-      hubApproved: true,
-      public: true
-    },
-    {
-      id: "p13",
-      title: "The Tidal Keeper's Vigil",
-      source: "audio 1_4960818747368540111.mp3 (Google Drive id ['1Hz_4IuoKlOjAHCQX_KPG7IDjGaLsSoZs', 4358731])",
-      script: "episodes/p13-the-tidal-keeper-s-vigil.txt",
-      provisional: true,
-      hubApproved: true,
-      public: true
-    },
-    {
-      id: "p15",
-      title: "The Steward's First Stumble",
-      source: "audio 1_4965320671958665505.mp3 (Google Drive id ['1DI334eEJBELjLbNdMGSyMzxR41mfXVQX', 4379838])",
-      script: "episodes/p15-the-stewards-first-stumble.txt",
-      provisional: true,
-      hubApproved: true,
-      public: true
-    },
-    {
-      id: "p18",
-      title: "The Three Silent Watchers",
-      source: "audio 1_4976960776360167349.mp3 (Google Drive id ['1xkozC0xOK5mMBrxx1GkcCi_GmUBZiMkq', 6080305])",
-      script: "episodes/p18-the-three-silent-watchers.txt",
-      provisional: true,
-      hubApproved: true,
-      public: true
-    },
-    {
-      id: "p20",
-      title: "The Farm's Silent Review",
-      source: "audio 1_4988285252205021425.mp3 (Google Drive id ['18kMpIMSmRBBR-quoqARY-zjT8w5Vb24C', 5834963])",
-      script: "episodes/p20-the-farm-s-silent-review.txt",
-      provisional: true,
-      hubApproved: true,
-      public: true
-    }
-  ];
-  function normalizeEpisodeId(id) {
-    var raw = String(id == null ? "" : id).trim();
-    if (!raw) return "";
-    var digits = raw.replace(/^#/, "").match(/(\d{3,5})/);
-    if (digits) return ("0000" + digits[1]).slice(-4);
-    return raw;
-  }
-  function isHardExcludedEpisode(id) {
-    return normalizeEpisodeId(id) === EXCLUDED_EPISODE_ID;
-  }
-  function listHubApprovedPublicEpisodes(bank) {
-    var entries = Array.isArray(bank) ? bank : HUB_APPROVED_PUBLIC_BANK;
-    return entries.filter(function (ep) {
-      if (!ep || ep.hubApproved !== true || ep.public !== true) return false;
-      if (isHardExcludedEpisode(ep.id)) return false;
-      return true;
-    });
-  }
 
   // keep in sync with js/speech.mjs — free browser SpeechSynthesis only, no paid TTS
   var MUTE_STORAGE_KEY = "g0p-ai-mute";
@@ -2075,15 +1903,19 @@ import { keyboardActivatesTheater, playbackStatusText } from "./js/theater-keys.
     start();
   }
 
+  function syncEpisodeChrome() {
+    var label = viewerEpisodeLabel(episode.episode) || episode.episode;
+    var heading = document.querySelector("h1");
+    if (heading) heading.textContent = episode.title || episode.episode;
+    document.title = label + " — " + (episode.title || "") + " — g0p.ai";
+    canvas.setAttribute("aria-label", "ASCII glyph theater. Click to begin episode " + label + ". Geryon the crab tells the fable.");
+  }
+
   function applyEpisode(parsed) {
     episode = parsed;
     var fable = FABLE_BANK[episode.episode];
     if (fable && fable.imagery) FABLE_IMAGERY = fable.imagery;
-    TABLEAUX = buildTableaux({ episode: episode.episode, imagery: FABLE_IMAGERY }, PHASES);
-    var heading = document.querySelector("h1");
-    if (heading) heading.textContent = episode.title || episode.episode;
-    document.title = episode.episode + " — " + (episode.title || "") + " — g0p.ai";
-    canvas.setAttribute("aria-label", "ASCII glyph theater. Click to begin episode " + episode.episode + ". Geryon the crab tells the fable.");
+    TABLEAUX = tableauxFor(episode.episode, FABLE_IMAGERY);
     renderCatalog();
   }
 
@@ -2116,6 +1948,7 @@ import { keyboardActivatesTheater, playbackStatusText } from "./js/theater-keys.
 
   function renderCatalog() {
     document.documentElement.dataset.episode = episode.episode;
+    syncEpisodeChrome();
     var listed = listHubApprovedPublicEpisodes();
     episodeListEl.innerHTML = "";
     listed.forEach(function (ep) {
@@ -2123,7 +1956,7 @@ import { keyboardActivatesTheater, playbackStatusText } from "./js/theater-keys.
       var li = document.createElement("li");
       var btn = document.createElement("button");
       btn.type = "button";
-      btn.textContent = ep.id + " — " + ep.title;
+      btn.textContent = ep.displayId + " — " + ep.title;
       btn.dataset.episode = ep.id;
       if (ep.id === episode.episode) btn.setAttribute("aria-current", "true");
       btn.addEventListener("click", function (e) {
@@ -2489,7 +2322,19 @@ import { keyboardActivatesTheater, playbackStatusText } from "./js/theater-keys.
     var phase = phaseAt(currentScene < 0 ? 0 : currentScene);
     var img = FABLE_IMAGERY[phase.id] || {};
     var frame = currentFrame < 0 ? 0 : currentFrame;
-    if (phase.id === "turn") return frame ? img.breakthrough || {} : img.approach || {};
+    if (phase.id === "turn") img = frame ? img.breakthrough || {} : img.approach || {};
+    if (img.title && img.title === episode.episode) {
+      var label = viewerEpisodeLabel(episode.episode);
+      if (label) {
+        var copy = {};
+        var key;
+        for (key in img) {
+          if (Object.prototype.hasOwnProperty.call(img, key)) copy[key] = img[key];
+        }
+        copy.title = label;
+        return copy;
+      }
+    }
     return img;
   }
 
@@ -2541,7 +2386,7 @@ import { keyboardActivatesTheater, playbackStatusText } from "./js/theater-keys.
       reduceMotion: reduceMotion,
       morphT: tour ? tour.morphT : (playing ? morphT : 0),
       imagery: tour ? tour.imagery : (playing ? imageryNow() : null),
-      episodeMark: episode.episode,
+      episodeMark: viewerEpisodeLabel(episode.episode) || episode.episode,
       flash: flashing && dreamFlash ? { hue: dreamFlash.hue, mix: 1 } : null
     });
   }

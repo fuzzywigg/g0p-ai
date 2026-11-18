@@ -22,10 +22,10 @@ const WAVE2 = [
 
 const PHASE_AT = ["room", "itch", "turn", "craft", "moral", "encore"];
 
-test("catalog appends the 7 second-wave fables after the first 13", () => {
+test("catalog includes the 7 second-wave fables", () => {
   const ids = listHubApprovedPublicEpisodes().map((ep) => ep.id);
   assert.equal(ids.length, 20);
-  assert.deepEqual(ids.slice(13), WAVE2.map(([id]) => id));
+  for (const [id] of WAVE2) assert.equal(ids.includes(id), true, id);
 });
 
 test("each second-wave episode has monotonic cues within duration matching captions", () => {
