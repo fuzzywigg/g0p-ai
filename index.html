@@ -51,9 +51,31 @@
       background: #000;
       cursor: pointer;
     }
-    html[data-state="playing"] canvas,
-    html[data-state="done"] canvas {
+    html[data-state="playing"] canvas {
       cursor: default;
+    }
+    html[data-state="done"] canvas {
+      cursor: pointer;
+    }
+    #replay {
+      position: fixed;
+      left: 50%;
+      bottom: calc(18vh + env(safe-area-inset-bottom));
+      transform: translateX(-50%);
+      z-index: 5;
+      font: inherit;
+      font-size: 0.78rem;
+      letter-spacing: 0.14em;
+      text-transform: lowercase;
+      color: var(--caption);
+      background: rgba(0, 0, 0, 0.72);
+      border: 1px solid rgba(255, 255, 255, 0.55);
+      padding: 0.45rem 0.9rem;
+      cursor: pointer;
+    }
+    #replay[hidden] { display: none !important; }
+    html[data-phone-stage="1"] #replay {
+      bottom: calc(28vh + 0.75rem);
     }
     #hint {
       position: fixed;
@@ -223,6 +245,7 @@
   <h1>The Ratchet That Never Turned</h1>
   <canvas id="field" aria-label="ASCII glyph theater. Click to begin episode 0006. Geryon the crab tells the fable."></canvas>
   <div id="hint">click</div>
+  <button type="button" id="replay" hidden>replay</button>
   <div id="stage-ui">
     <nav id="catalog" aria-label="Hub-approved public episodes">
       <p class="catalog-label">episodes</p>
@@ -343,6 +366,7 @@ import { heroStageSize } from "./js/phone-stage.mjs";
 import { shareAction, sharePayload } from "./js/share.mjs";
 import { reducedMotionTransition } from "./js/reduced-motion.mjs";
 import { hiddenPlaybackPlan, shownPlaybackPlan } from "./js/visibility.mjs";
+import { replayReset } from "./js/replay.mjs";
 (function () {
   "use strict";
 
@@ -1821,6 +1845,7 @@ import { hiddenPlaybackPlan, shownPlaybackPlan } from "./js/visibility.mjs";
   var hintEl = document.getElementById("hint");
   var episodeListEl = document.getElementById("episode-list");
   var shareBtn = document.getElementById("share-episode");
+  var replayBtn = document.getElementById("replay");
   var muteToggle = document.getElementById("mute-toggle");
   var voicePicker = document.getElementById("voice-picker");
   var speechStatus = document.getElementById("speech-status");
@@ -1940,7 +1965,43 @@ import { hiddenPlaybackPlan, shownPlaybackPlan } from "./js/visibility.mjs";
     captionsEl.classList.remove("in");
     captionsEl.classList.remove("out");
     hintEl.textContent = "click";
+    syncReplay();
     return playbackGeneration;
+  }
+
+  function syncReplay() {
+    if (!replayBtn) return;
+    var done = document.documentElement.dataset.state === "done";
+    if (!done && document.activeElement === replayBtn) canvas.focus();
+    replayBtn.hidden = !done;
+  }
+
+  function markDone() {
+    document.documentElement.dataset.state = "done";
+    syncReplay();
+    if (!replayBtn) return;
+    var active = document.activeElement;
+    if (!active || active === document.body || active === canvas) replayBtn.focus();
+  }
+
+  function replayEpisode() {
+    var plan = replayReset({ state: document.documentElement.dataset.state || "" });
+    if (!plan.allowed || selectingEpisode) return;
+    resetPlayback();
+    morphT = plan.morphT;
+    morphing = plan.morphing;
+    morphPeakArmed = plan.morphPeakArmed;
+    dreamFlash = null;
+    dreamPoints = [];
+    flourishUntil = 0;
+    document.documentElement.dataset.dream = "0";
+    document.documentElement.dataset.morphing = "0";
+    delete document.documentElement.dataset.phase;
+    delete document.documentElement.dataset.caption;
+    delete document.documentElement.dataset.scene;
+    delete document.documentElement.dataset.frame;
+    spawnParticles();
+    start();
   }
 
   function applyEpisode(parsed) {
@@ -2668,7 +2729,7 @@ import { hiddenPlaybackPlan, shownPlaybackPlan } from "./js/visibility.mjs";
     stopAudio();
     delete document.documentElement.dataset.audio;
     if (action === "speech") playCaptions();
-    else document.documentElement.dataset.state = "done";
+    else markDone();
   }
 
   function applyNarrationMute() {
@@ -2730,7 +2791,7 @@ import { hiddenPlaybackPlan, shownPlaybackPlan } from "./js/visibility.mjs";
       syncAudioClock(endTime, audio.duration);
       document.documentElement.dataset.audio = "ended";
       stopAudio();
-      document.documentElement.dataset.state = "done";
+      markDone();
     });
 
     audio.addEventListener("error", function () {
@@ -2822,7 +2883,7 @@ import { hiddenPlaybackPlan, shownPlaybackPlan } from "./js/visibility.mjs";
     }
     if (generation !== playbackGeneration) return;
     cancelSpeech();
-    document.documentElement.dataset.state = "done";
+    markDone();
   }
 
   function start() {
@@ -2830,6 +2891,7 @@ import { hiddenPlaybackPlan, shownPlaybackPlan } from "./js/visibility.mjs";
     playing = true;
     document.documentElement.dataset.state = "playing";
     document.documentElement.dataset.hero = HERO;
+    syncReplay();
     hintEl.textContent = "";
     if (window.speechSynthesis && typeof window.speechSynthesis.getVoices === "function") {
       window.speechSynthesis.getVoices();
@@ -2852,8 +2914,13 @@ import { hiddenPlaybackPlan, shownPlaybackPlan } from "./js/visibility.mjs";
 
   function onActivate(e) {
     if (e.target && e.target.closest && e.target.closest("#stage-ui")) return;
+    if (e.target && e.target.id === "replay") return;
     if (e.type === "keydown" && e.key !== "Enter" && e.key !== " ") return;
     if (e.type === "keydown") e.preventDefault();
+    if (document.documentElement.dataset.state === "done") {
+      replayEpisode();
+      return;
+    }
     start();
   }
 
@@ -2903,6 +2970,17 @@ import { hiddenPlaybackPlan, shownPlaybackPlan } from "./js/visibility.mjs";
     document.body.removeChild(input);
     return ok;
   }
+
+  replayBtn.addEventListener("click", function (e) {
+    e.stopPropagation();
+    replayEpisode();
+  });
+  replayBtn.addEventListener("keydown", function (e) {
+    if (e.key !== "Enter" && e.key !== " ") return;
+    e.preventDefault();
+    e.stopPropagation();
+    replayEpisode();
+  });
 
   shareBtn.addEventListener("click", function (e) {
     e.stopPropagation();
