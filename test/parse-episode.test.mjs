@@ -116,6 +116,7 @@ test("player morphs through the Aesop phase map, not a frozen glyph", () => {
   const duration = Number(morphMs[1]);
   assert.ok(duration >= 1000 && duration <= 1700, "morph duration should stay in 1–1.7s");
   assert.match(html, /var PHASES = \[/);
-  assert.match(html, /var TABLEAUX = buildTableaux/);
+  assert.match(html, /function buildTableaux/);
+  assert.match(html, /var TABLEAUX = tableauxFor/);
   assert.equal(episode.scenes.length, 7);
 });

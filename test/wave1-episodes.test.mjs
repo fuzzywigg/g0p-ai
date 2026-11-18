@@ -28,9 +28,12 @@ const WAVE1 = [
 const PHASE_AT = ["room", "itch", "turn", "craft", "moral", "encore"];
 
 test("catalog lists 0006 plus the 12 approved fables", () => {
-  const ids = listHubApprovedPublicEpisodes().map((ep) => ep.id);
-  assert.equal(ids[0], "0006");
-  assert.deepEqual(ids.slice(1, 13), WAVE1.map(([id]) => id));
+  const ids = new Set(listHubApprovedPublicEpisodes().map((ep) => ep.id));
+  assert.equal(ids.has("0006"), true);
+  assert.deepEqual(
+    WAVE1.map(([id]) => ids.has(id)),
+    WAVE1.map(() => true),
+  );
 });
 
 test("each new episode has monotonic cues within duration matching captions", () => {

@@ -1,10 +1,60 @@
 /**
  * Thin public episode catalog. Hub-approved public bank only.
  * Episode 0005 is hard-excluded even if a caller marks it approved.
- * Provisional wave ids (p01…) are hub-approved; 0006, 0008 and 0010 keep numbered ids.
+ *
+ * Storage ids stay mixed on purpose: 0006 is the original hub episode,
+ * 0008 and 0010 kept four-digit ids because the narration spoke them,
+ * and pNN ids are provisional upload slots whose number was not spoken.
+ * The menu does not print those ids. It prints a viewer rank (`01`–`20`)
+ * after sorting by the integer in the storage id. A four-digit id sorts
+ * before a provisional id with the same integer (0010 before p10).
+ *
+ * p05, p06, and p08 were never in the approved waves. Nothing is listed
+ * for them. See README.
  */
 
 export const EXCLUDED_EPISODE_ID = "0005";
+
+/** Upload slots with no approved episode in this repo. */
+export const UNPUBLISHED_PROVISIONAL_IDS = Object.freeze(["p05", "p06", "p08"]);
+
+const NUMBERED_ID = /^(\d{4})$/;
+const PROVISIONAL_ID = /^p(\d{2})$/;
+const VIEWER_ID = /^\d{2}$/;
+
+/**
+ * Sort key: [integer in the id, 0 for four-digit / 1 for provisional, id].
+ * Unknown shapes sort last.
+ */
+export function episodeSortKey(id) {
+  const raw = String(id ?? "").trim();
+  const numbered = NUMBERED_ID.exec(raw);
+  if (numbered) return [Number(numbered[1]), 0, raw];
+  const provisional = PROVISIONAL_ID.exec(raw);
+  if (provisional) return [Number(provisional[1]), 1, raw];
+  return [Number.POSITIVE_INFINITY, 2, raw];
+}
+
+export function compareEpisodes(a, b) {
+  const left = episodeSortKey(a && a.id);
+  const right = episodeSortKey(b && b.id);
+  for (let i = 0; i < left.length; i++) {
+    if (left[i] < right[i]) return -1;
+    if (left[i] > right[i]) return 1;
+  }
+  return 0;
+}
+
+/** 1-based rank in the sorted public list, always two digits. */
+export function viewerEpisodeId(index) {
+  const n = Number(index) + 1;
+  if (!Number.isInteger(n) || n < 1 || n > 99) return "";
+  return String(n).padStart(2, "0");
+}
+
+export function isViewerEpisodeId(id) {
+  return VIEWER_ID.test(String(id ?? "").trim());
+}
 
 export const HUB_APPROVED_PUBLIC_BANK = Object.freeze([
   Object.freeze({
@@ -202,9 +252,22 @@ export function isHardExcludedEpisode(id) {
 
 export function listHubApprovedPublicEpisodes(bank = HUB_APPROVED_PUBLIC_BANK) {
   const entries = Array.isArray(bank) ? bank : [];
-  return entries.filter((ep) => {
+  const listed = entries.filter((ep) => {
     if (!ep || ep.hubApproved !== true || ep.public !== true) return false;
     if (isHardExcludedEpisode(ep.id)) return false;
     return true;
   });
+  listed.sort(compareEpisodes);
+  return listed.map((ep, index) =>
+    Object.freeze({
+      ...ep,
+      displayId: viewerEpisodeId(index),
+    }),
+  );
+}
+
+/** Viewer rank for a storage id, or "" when that episode is not listed. */
+export function viewerEpisodeLabel(id, bank = HUB_APPROVED_PUBLIC_BANK) {
+  const hit = listHubApprovedPublicEpisodes(bank).find((ep) => ep.id === id);
+  return hit ? hit.displayId : "";
 }
