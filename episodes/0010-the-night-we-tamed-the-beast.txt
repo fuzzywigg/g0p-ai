@@ -24,7 +24,7 @@ phase: room
 
 [Geryon] Expectation led your rule for equals failed systemd units plus stale board plus slack delivery leg the room felt colder after that not from the fan from realizing how long we'd been running on hope the itch by zero one fifteen the itch had spread I remembered the lane smokes those little scripts we run to check if our AI providers are still talking. They'd been permanently orange in the dashboard, but nobody had chased it down because the error looked benign.
 
-[Geryon] File not found error under systemd path. The connection health run. SH script was trying to source Node. SH, but when systemd launches a service, it strips the path down to the bare bones. No wonder it couldn't find the file. I dug into the wrapper. The fix was stupid simple. Make the script source node. SH with an absolute path. But I didn't stop there. While I was in there, I added integrity sentinels to the heartbeat check.
+[Geryon] File not found error under systemd path. Classic. The connection health run. SH script was trying to source Node. SH, but when systemd launches a service, it strips the path down to the bare bones. No wonder it couldn't find the file. I dug into the wrapper. The fix was stupid simple. Make the script source node. SH with an absolute path. But I didn't stop there. While I was in there, I added integrity sentinels to the heartbeat check.
 
 [Geryon] Those little flags that say yes. The pulse is real and put a guard around the token cost import so it wouldn't crash the whole smoke if the module was missing. Then I touched the secret audit marker. It had been reporting honest even when it found nothing, which is the opposite of honest. I made it report failed when the audit came up empty. A silent pass is just another kind of lie. I ran the smokes again. One by one, the oranges turned to green. Eight services, all breathing clean. I leaned back and let out a breath I hadn't realized I'd been holding.
 
@@ -32,11 +32,15 @@ phase: room
 
 phase: itch
 
+[Geryon] The itch.
+
 [Geryon] Wasn't gone, it had just moved. Now I could smell the next problem, the GCS backup cron. It was running wild, unbounded, with no timeout. If the network hiccuped, it would hang forever, and we'd never know.
 
 ---
 
 phase: turn
+
+[Geryon] The turn.
 
 [Geryon] At 0-2, 45, I turned to the GCS backup. The curl command was naked. No timeouts, no limits. Just here's a file. Go push it to the bucket and hope for the best. That's how you get a cron that locks up at 3am and stays stuck until someone notices the bucket hasn't updated in 3 days. I bounded it, added connect timeout 15 and max time 300. 15 seconds to shake hands, 5 minutes to push the whole thing.
 
@@ -45,6 +49,8 @@ phase: turn
 ---
 
 phase: craft
+
+[Geryon] The craft.
 
 [Geryon] The real craft came at 0-4. 0-0 with the on failure rollout. We had seven timer-fed one shots. Services that run on a schedule do their job and exit. Swarm heartbeat. Backlog reconcile health checks the works. They were designed to fail loud. If something went wrong, they'd exit with code 10, a signal we'd agreed on meant designed signal. Trace backs and real errors. Those exit with other codes and should trigger alarms.
 
@@ -60,9 +66,15 @@ phase: craft
 
 phase: moral
 
+[Geryon] The moral.
+
+[Geryon] A system's strength lies not in never failing, but in failing loud enough to be fixed.
+
 ---
 
 phase: encore
+
+[Geryon] The encore.
 
 [Geryon] By 06, 00, the sky was turning that pale blue that means dawn's coming. I ran the connection dashboard, 26 services all green. not a single red. The ledger was shouting in slack when it needed to. The GCS backup was bounded and timed. The one-shot screamed on real failures and stayed quiet on design exits. Even the doctor cleanup check had passed its mechanical validation.
 

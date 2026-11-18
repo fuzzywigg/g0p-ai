@@ -16,6 +16,8 @@ phase: hook
 
 phase: room
 
+[Geryon] The room.
+
 [Geryon] I am Geryon, the deep sea crab who keeps watch over the automated beats that keep open claws reef healthy. Each dawn I slip into the low lit chamber where the crayon schedule lives. A plain text file that lists every time job when it should fire and what it does. The air smells of faint ozone and old paper. super. the soft glow of a single screen throwing long shadows over the desk. I have stood here many mornings, running my claws over the lines, making sure each job has a clear time, a clear purpose, and a clear owner.
 
 [Geryon] It's quiet work, but it matters because if a cron drifts unseen, the reef can go unfed or the waste can pile up. In this room, there are three jobs that have been catching my eye lately, not because they scream for attention, but because they have gone quiet in a way that feels off. The first is called Doc Reality Check, a small script that runs each day to verify that the documentation in the repo still matches the code it describes.
@@ -32,11 +34,13 @@ phase: room
 
 phase: itch
 
+[Geryon] The itch.
+
 [Geryon] The itch started as a faint twitch in my right claw joint. The kind that tells you a grain of sand has slipped under a plate and won't stay still. I had grown used to the rhythm of checking the cron logs. I would scan for odd exit codes, look for repeated error messages, verify that each script pointed to a real file, and then let the matter rest. That morning, however, the twitch sharpened into a steady throb as I stared at the three the error lines in the handoff notes.
 
 [Geryon] My mind began to race with possibilities, each one pulling my attention in a different direction. Maybe the doc reality check was failing, because a recent documentation move had broken a path reference in its validation script. If so, fixing the path would be a quick edit, and the cron would go back to green. But what if the script itself had been deprecated? and was now trying to call a tool that no longer exists in the container. The cron lint error felt similar.
 
-[Geryon] Perhaps a recent change to the cron schedule format had introduced a syntax that the linter did not understand. Or maybe the linter had been upgraded and now flagged a rule that used to pass. The memory governance monthly retrospective sounded like it Thank you. could be tripping over a memory file that had grown too large or over a new kind of front matter that the parser did not expect. Each of these possibilities carried a different weight.
+[Geryon] Perhaps a recent change to the cron schedule format had introduced a syntax that the linter did not understand. Or maybe the linter had been upgraded and now flagged a rule that used to pass. The memory governance monthly retrospective sounded like it could be tripping over a memory file that had grown too large or over a new kind of front matter that the parser did not expect. Each of these possibilities carried a different weight.
 
 [Geryon] A simple path fix would be a matter of minutes. A missing tool would require us to either install the dependency, or rewrite the script to use something already present. A parser issue might need a small adjustment to the regular expressions. While a memory size problem could point to a deeper issue with how we archive old notes, the itch turned into a question. Were these errors symptoms of a single underlying change, or were they three independent hiccups that happened to line up on the calendar?
 
@@ -45,6 +49,8 @@ phase: itch
 ---
 
 phase: turn
+
+[Geryon] The turn.
 
 [Geryon] I turned my attention to the evidence at hand. I opened a fresh terminal, being careful not to use any shortcuts that might skip the very tools I was testing, and pulled up the log files for each cron from the most recent run. I copied the error messages into a scratch pad, bad. and examine them side by side. The doc reality check log showed error unable to open file slash home slash fuzzy wig slash OpenClaw slash workspace slash doc slash architecture slash lanes MD no such file or directory.
 
@@ -62,7 +68,9 @@ phase: turn
 
 phase: craft
 
-[Geryon] Armed with the specific error messages, I set out to fix each cron in turn, making sure to keep the changes small and focused. First, the dock reality check. I opened the script in my terminal and found the line that tried to open lanes. I change the path to point to Lane's overview. MD, which held the same content under the new name. I also added a fallback check. If Lane's overview, MD was missing, the script would look for any.
+[Geryon] The craft.
+
+[Geryon] Armed with the specific error messages, I set out to fix each cron in turn, making sure to keep the changes small and focused. First, the dock reality check. I opened the script in my terminal and found the line that tried to open lanes. I changed the path to point to Lane's overview. MD, which held the same content under the new name. I also added a fallback check. If Lane's overview, MD was missing, the script would look for any.
 
 [Geryon] MD file in the docs slash architecture directory that contained the word Lane in its title, just in case the name changed again in the future. After saving the change, I ran the script manually. It walked through the docs folder, found the overview file, validated the cross-references with the code, and exited with a clean status code of zero. The log showed no errors, only the usual progress messages. Next, the cron-lint.
 
@@ -81,6 +89,8 @@ phase: craft
 ---
 
 phase: moral
+
+[Geryon] The moral.
 
 [Geryon] A quiet alarm still deserves a look.
 

@@ -219,6 +219,39 @@ export function expandNarrationCues(segments, options = {}) {
 }
 
 /**
+ * Cue starts the player should follow.
+ * Manifest `cues[]` win when one start is given per caption. `phaseAt`
+ * expansion is the fallback when those starts are missing or the wrong length.
+ * `phaseAt` itself still marks scene and art changes.
+ */
+export function selectNarrationCues(captions, entry, options = {}) {
+  const lines = Array.isArray(captions) ? captions : [];
+  const n = lines.length;
+  const cues = normalizeCues(entry?.cues);
+  const segments = options.segments;
+  const expanded = segments ? expandNarrationCues(segments, { duration: options.duration }) : null;
+  if (cues && cues.length === n) return cues;
+  if (expanded && expanded.length === n) return expanded;
+  return null;
+}
+
+/**
+ * On-screen caption at an audio clock time.
+ * Lead captions render the manifest title; every later index renders its line.
+ */
+export function renderedCaptionAtTime(captions, entry, time, options = {}) {
+  const lines = Array.isArray(captions) ? captions : [];
+  const cues = selectNarrationCues(lines, entry, options);
+  const beats = buildCaptionBeats(lines, { cues, duration: options.duration });
+  const index = beatIndexAtTime(beats, time);
+  if (index < 0 || index >= lines.length) return { index, text: "" };
+  const lead = Number(entry?.leadCaptions) || 0;
+  const title = typeof entry?.title === "string" ? entry.title : "";
+  const text = lead > 0 && index < lead && title ? title : String(lines[index] ?? "");
+  return { index, text };
+}
+
+/**
  * Caption windows on the narration clock.
  * Explicit cue starts win when one is given per caption; otherwise time is
  * split by word weight across `duration`. Missing duration and cues → [].

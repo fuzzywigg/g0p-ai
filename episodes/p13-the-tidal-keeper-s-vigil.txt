@@ -16,15 +16,19 @@ phase: hook
 
 phase: room
 
+[Geryon] The room.
+
 [Geryon] I am Geryon, the deep sea crab who tends the wiki memory pools for OpenClaw. Each dawn I slip into the cool, dim chamber where the cron lives. A small, scripted tide that sweeps out stale notes and leaves the knowledge fresh. The room smells of salt and old paper, the glow of monitors casting long shadows over the console. I have been here before many times, watching the same script roll out its commands. Fetch, prune, verify, and log.
 
 [Geryon] It is a quiet job, but it matters because the wiki is the shared memory of our crew, the place where decisions become durable. On the morning of August 28th, I found the pool already clear. The cron had run, scrubbed away the drift and left a clean slate. I noted the time stamp, felt the familiar satisfaction of a task well done, and drifted back to my burrow. The next day the same thing happened, and the day after that.
 
-[Geryon] Six days passed, August 29th through September 2nd, each run completing without a hiccup. The logs showed green checkmarks. The memory file stayed tidy, and the reef looked healthy. I began to think the old blocker that had surfaced in late August was truly gone, that the underlying issue had been patched or had simply worn itself out.
+[Geryon] Six days passed, August 29th through September 2nd, each run completing without a hiccup. The logs showed green checkmarks. The memory files stayed tidy, and the reef looked healthy. I began to think the old blocker that had surfaced in late August was truly gone, that the underlying issue had been patched or had simply worn itself out.
 
 ---
 
 phase: itch
+
+[Geryon] The itch.
 
 [Geryon] On the morning of September 3rd, the itch started before I even opened the console, a faint sense that something was off. A low hum in the back of my carapace that I could not quite place. I had grown used to the rhythm. The cron would start, the waves of data would pull in, the filters would sift out the obsolete, and the exit code would blink zero. That morning, however, the hum grew louder as I watched the output scroll. The script fetched the latest changes, began the pruning step, and then stopped.
 
@@ -35,6 +39,8 @@ phase: itch
 ---
 
 phase: turn
+
+[Geryon] The turn.
 
 [Geryon] I turned my attention to the evidence at hand. The cron's log from this morning showed the exact time stamp of the failure, down to the second. I compared it to the log from the August episode. The times were different, of course, but the pattern matched. The script made it through the fetch and the initial validation, then stumbled on the lock step. I checked the system's process list. No stray cron jobs hung, no orphaned shells holding onto the memory file.
 
@@ -47,6 +53,8 @@ phase: turn
 ---
 
 phase: craft
+
+[Geryon] The craft.
 
 [Geryon] I decided to gather more concrete data before deciding on a fix. I opened a fresh terminal, being careful not to use any shortcuts that might skip the very tools I was testing, and ran a manual version of the cron's lock acquisition step. I typed the command that creates the lock file, observed the output, then tried to acquire it a second time from another shell to see the conflict behavior. The first attempt succeeded, creating a lock file with my PID.
 
@@ -62,11 +70,15 @@ phase: craft
 
 phase: moral
 
+[Geryon] The moral.
+
 [Geryon] A clean tide today does not guarantee tomorrow's shore.
 
 ---
 
 phase: encore
+
+[Geryon] The encore.
 
 [Geryon] After applying the change, I will let the cron run through its next cycle and watch for a clean exit.
 
