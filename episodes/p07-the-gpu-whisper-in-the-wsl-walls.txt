@@ -16,6 +16,8 @@ phase: hook
 
 phase: room
 
+[Geryon] The room.
+
 [Geryon] The apartment was quiet except for the low hum of the Legion's fans and the occasional click of my mechanical keyboard. It was zero two, 17 EDT, the witching hour when the world's noise drops away and the only thing left is the glow of two monitors stacked like a lighthouse beacon. again. On the left screen, a tail of the Alama log scrolled in monochrome. Each line a heartbeat of the QN3. 1. 7B model laboring over a diff from the code crawler.
 
 [Geryon] On the right, a Grafana panel showed a flat line stuck at 15 tokens per second. Pathetic, really. for a machine that housed a GTX 1070 Gathering Dust in its PCIe slot. I had spent the past week wrestling with the idea that the GPU was just for show, a decorative afterthought in a CPU-first world. The documentation for Alama was clear. Enable CUDA, set the environment variable, and the models would magically migrate to the video memory.
@@ -27,6 +29,8 @@ phase: room
 ---
 
 phase: itch
+
+[Geryon] The itch.
 
 [Geryon] The itch started as a whisper in the back of my mind. During a daytime, stand up with the crawler team. We were reviewing the nightly spurts, those 30-minute bursts where the crawler proposes changes and the warden verifies them. The numbers were sobering. Each spurt took roughly six minutes to chew through a 24 KB diff, and with the current fleet size, we were looking at a full cycle of three and a half days. That meant high severity findings lingered, waiting for a night shift human to notice them before they could be drafted into a fix.
 
@@ -42,6 +46,8 @@ phase: itch
 
 phase: turn
 
+[Geryon] The turn.
+
 [Geryon] The turn came not with a bang. but with a quiet edit to a SystemD user unit file. I created a copy of the existing Allama service, named it Allama GPUXP. Service, and pointed it at a new port, 11,436, so it could run side by side with the main instance without stepping on its toes. In the Service section, I added the line. I also made sure to set restart equals no by design, because the WSL-2 pinned memory issue, a llama hash 11,317, meant a crash could loop endlessly if we allowed automatic restarts.
 
 [Geryon] Instead, I wanted the unit to stay down after a failure, a clear signal that something was wrong. and needed manual inspection. I set keepalive equals 5m, so the service would linger just long enough to load a model and serve a request, and I capped max-loaded models equals 1 to keep the VRAM footprint predictable. After saving the file, I ran systemtiluser daemon reload, and then system tool users start Alama GPU Xp service.
@@ -55,6 +61,8 @@ phase: turn
 ---
 
 phase: craft
+
+[Geryon] The craft.
 
 [Geryon] The craft lay in the details that turned a successful experiment into a reliable piece of infrastructure. First, I had to make sure the crawlers would automatically prefer the GPU lane when it was healthy and fall back to CPU when it wasn't. I dug into the Gen back end, function in the crawler code base, and added a health check routine that pings port 11,436 with a lightweight request. If the call returns within 200ms and reports a model loaded, the crawler routes its request there.
 
@@ -70,11 +78,15 @@ phase: craft
 
 phase: moral
 
+[Geryon] The moral.
+
 [Geryon] Sometimes the engine was there all along, you just had to point the fuel line right.
 
 ---
 
 phase: encore
+
+[Geryon] The encore.
 
 [Geryon] The lights in the apartment had begun to shift from the deep blue of night to the pale gray of dawn when I finally leaned back in my chair. The echo of the GPUs were still faint in my ears. I opened the project's wiki and added a new entry titled, GPU Alama Lane. quick start. Linking to the commit that introduced the Allama GPU exp unit and the health check patch in the crawler. I tagged it with the same four labels that had guided this whole venture.
 

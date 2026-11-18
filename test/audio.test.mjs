@@ -13,8 +13,11 @@ import {
   expandNarrationCues,
   narrationSource,
   parseAudioManifest,
+  renderedCaptionAtTime,
+  selectNarrationCues,
 } from "../js/audio.mjs";
-import { parseEpisode } from "../js/parse-episode.mjs";
+import { listHubApprovedPublicEpisodes } from "../js/catalog.mjs";
+import { parseEpisode, sceneIndexForCaption } from "../js/parse-episode.mjs";
 
 const root = join(dirname(fileURLToPath(import.meta.url)), "..");
 
@@ -262,22 +265,25 @@ test("shipped 0006 narration skips the unspoken hook and locks later phases", ()
     const at = entry.phaseAt[scene.phase];
     return at == null ? { captions: scene.captions } : { captions: scene.captions, at };
   });
-  const expanded = expandNarrationCues(segments, { duration: listed.duration });
-  assert.equal(expanded.length, entry.cues.length);
-  for (let i = 0; i < expanded.length; i++) {
-    assert.ok(Math.abs(expanded[i] - entry.cues[i]) < 0.011, `${i} ${expanded[i]} ${entry.cues[i]}`);
-  }
+  assert.deepEqual(
+    selectNarrationCues(episode.captions, entry, { segments, duration: listed.duration }),
+    entry.cues,
+  );
 
   const beats = buildCaptionBeats(episode.captions, { cues: entry.cues, duration: listed.duration });
-  assert.equal(beatIndexAtTime(beats, 1), 0);
-  assert.equal(beatIndexAtTime(beats, entry.phaseAt.room - 0.05), 0);
-  assert.equal(beatIndexAtTime(beats, entry.phaseAt.room), 2);
-  let offset = 0;
+  assert.equal(
+    renderedCaptionAtTime(episode.captions, entry, 1, { segments, duration: listed.duration }).text,
+    listed.title,
+  );
   for (const scene of episode.scenes) {
-    if (entry.phaseAt[scene.phase] != null) {
-      assert.equal(beatIndexAtTime(beats, entry.phaseAt[scene.phase]), offset, scene.phase);
-    }
-    offset += scene.captions.length;
+    const at = entry.phaseAt[scene.phase];
+    if (at == null) continue;
+    const shown = beatIndexAtTime(beats, at);
+    assert.equal(
+      episode.scenes[sceneIndexForCaption(episode, shown)].phase,
+      scene.phase,
+      scene.phase,
+    );
   }
 
   const mp3 = join(root, "audio", "0006.mp3");
@@ -310,6 +316,61 @@ test("shipped 0006 narration skips the unspoken hook and locks later phases", ()
   ]);
 });
 
+function narrationSegments(episode, entry) {
+  if (!entry?.phaseAt) return null;
+  return episode.scenes.map((scene) => {
+    const at = entry.phaseAt[scene.phase];
+    return at == null ? { captions: scene.captions } : { captions: scene.captions, at };
+  });
+}
+
+test("rendered caption at a manifest cue time is that cue's caption", () => {
+  const raw = JSON.parse(readFileSync(join(root, "audio", "manifest.json"), "utf8"));
+  const listed = raw.p10;
+  const entry = parseAudioManifest(raw).p10;
+  const script = listHubApprovedPublicEpisodes().find((ep) => ep.id === "p10").script;
+  const episode = parseEpisode(readFileSync(join(root, script), "utf8"));
+  const segments = narrationSegments(episode, entry);
+  const expanded = expandNarrationCues(segments, { duration: listed.duration });
+  assert.equal(expanded.length, episode.captions.length);
+  assert.notDeepEqual(expanded, entry.cues);
+
+  const selected = selectNarrationCues(episode.captions, entry, {
+    segments,
+    duration: listed.duration,
+  });
+  assert.deepEqual(selected, entry.cues);
+
+  for (let i = 0; i < entry.cues.length; i++) {
+    const start = entry.cues[i];
+    const end = i + 1 < entry.cues.length ? entry.cues[i + 1] : listed.duration;
+    if (!(end > start + 0.05)) continue;
+    const time = (start + end) / 2;
+    const rendered = renderedCaptionAtTime(episode.captions, entry, time, {
+      segments,
+      duration: listed.duration,
+    });
+    const expected =
+      i < entry.leadCaptions && entry.title ? entry.title : episode.captions[i];
+    assert.equal(rendered.index, i, `p10 cue ${i} at ${time}`);
+    assert.equal(rendered.text, expected, `p10 cue ${i}`);
+    const weighted = buildCaptionBeats(episode.captions, {
+      cues: expanded,
+      duration: listed.duration,
+    });
+    if (beatIndexAtTime(weighted, time) !== i) {
+      assert.notEqual(beatIndexAtTime(weighted, time), rendered.index);
+    }
+  }
+
+  const mismatched = selectNarrationCues(["only one"], { cues: [0, 4], phaseAt: { room: 1 } }, {
+    segments: [{ captions: ["only one"], at: 1 }],
+    duration: 8,
+  });
+  assert.deepEqual(mismatched, [1]);
+  assert.equal(selectNarrationCues(["orphan"], { cues: [0, 3] }, {}), null);
+});
+
 test("inlined audio helpers match js/audio.mjs", () => {
   const html = readFileSync(join(root, "index.html"), "utf8");
   const start = html.indexOf("function conventionAudioPath");
@@ -327,6 +388,8 @@ test("inlined audio helpers match js/audio.mjs", () => {
       dreamBeatsAtTime,
       audioEventAction,
       expandNarrationCues,
+      selectNarrationCues,
+      renderedCaptionAtTime,
     };`,
   )();
   const samples = [
@@ -390,6 +453,28 @@ test("inlined audio helpers match js/audio.mjs", () => {
     expandNarrationCues(leadSegments, { duration: 16 }),
   );
   assert.equal(inline.expandNarrationCues([{ captions: ["x"] }], {}), null);
+  const cueEntry = { cues: [0, 3, 7], leadCaptions: 1, title: "Title", phaseAt: { room: 1 } };
+  assert.deepEqual(
+    inline.selectNarrationCues(lines, cueEntry, {
+      segments: leadSegments,
+      duration: 12,
+    }),
+    selectNarrationCues(lines, cueEntry, { segments: leadSegments, duration: 12 }),
+  );
+  assert.deepEqual(
+    inline.renderedCaptionAtTime(lines, cueEntry, 4, { duration: 12 }),
+    renderedCaptionAtTime(lines, cueEntry, 4, { duration: 12 }),
+  );
+  assert.deepEqual(
+    inline.selectNarrationCues(["only"], { cues: [0, 9], phaseAt: { room: 2 } }, {
+      segments: [{ captions: ["only"], at: 2 }],
+      duration: 6,
+    }),
+    selectNarrationCues(["only"], { cues: [0, 9], phaseAt: { room: 2 } }, {
+      segments: [{ captions: ["only"], at: 2 }],
+      duration: 6,
+    }),
+  );
   for (const event of ["pause", "ended", "error", "timeupdate", "nope"]) {
     assert.equal(inline.audioEventAction(event, false), audioEventAction(event, false));
     assert.equal(inline.audioEventAction(event, true), audioEventAction(event, true));
@@ -409,6 +494,8 @@ test("player inlines audio selection and keeps the speech path for an empty mani
     "dreamBeatsAtTime",
     "audioEventAction",
     "expandNarrationCues",
+    "selectNarrationCues",
+    "renderedCaptionAtTime",
   ]) {
     assert.match(src, new RegExp(`export function ${name}\\b`));
     assert.match(html, new RegExp(`function ${name}\\b`));
@@ -425,6 +512,8 @@ test("player inlines audio selection and keeps the speech path for an empty mani
   assert.match(html, /function audioCaptionText/);
   assert.match(html, /leadCaptions/);
   assert.match(html, /function expandNarrationCues/);
+  assert.match(html, /function selectNarrationCues/);
+  assert.match(html, /selectNarrationCues\(episode\.captions, entry/);
   assert.match(html, /function playCaptions/);
   assert.match(html, /speakCaption\(lines\[i\]/);
   assert.match(html, /prefers-reduced-motion/);

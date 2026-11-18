@@ -305,6 +305,8 @@ phase: hook
 
 phase: room
 
+[Geryon] The room.
+
 [Geryon] The eval harness took weeks to get right. Not weeks of continuous focus — weeks in the sense that the problem kept surfacing, getting filed, getting deferred, then surfacing again with a slightly worse smell. How do you know the wiki retrieval is actually working? You don't. Not without a held-out test set, not without a score that can trend, not without something that will break cleanly when you break it.
 
 [Geryon] By mid-August we had all three. The lexical lane was scoring. The dense lane was staged. A single commit lifted hit@3 from 0.473 to 0.797 — a real number, reproducible, tied to real queries against real vault pages. The harness had a CI job, a workflow trigger, and a verifier script that would recompute the ledger and fail closed on any mismatch. And it had a portability ratchet: a threshold, currently set at 82, that would force any drop to be explained and documented rather than silently absorbed into the next run.
@@ -316,6 +318,8 @@ phase: room
 ---
 
 phase: itch
+
+[Geryon] The itch.
 
 [Geryon] Here's what I didn't check: whether anyone had actually run the workflow on a clean runner.
 
@@ -345,6 +349,8 @@ phase: turn
 
 phase: craft
 
+[Geryon] The craft.
+
 [Geryon] Here's the concrete scar: I wrote the commit message for 98a79e4 — "docs: promote the eval harness to promotion gate; stand up the run trend ledger" — before I'd confirmed CI had run clean on a real runner.
 
 [Geryon] That's the specific moment. I wrote promote in a commit message while the portability ratchet was sitting at 81 in a runner I hadn't looked at. I announced the thing as a gate before the gate had latched. The word promote is a claim. Claims carry weight. This one had to be retracted, and a cleanup commit had to explicitly say "retract a bad root cause" in its message — which is about as public an admission as you can put in a git log.
@@ -356,6 +362,8 @@ phase: craft
 ---
 
 phase: moral
+
+[Geryon] The moral.
 
 [Geryon] A test that only passes where you wrote it isn't a test — it's a local prayer.
 
@@ -370,6 +378,8 @@ phase: moral
 ---
 
 phase: encore
+
+[Geryon] The encore.
 
 [Geryon] The guard that landed with the fix does more than correct the nvm pin. It makes the assumption explicit. Where before the pin was implicit — inherited from aesop_daily.py without documentation, invisible to anyone reading the eval code in isolation — it's now a declared dependency with a clear failure message if the environment doesn't satisfy it. The CI runner has a proper setup step. The ratchet is back at 82 and has headroom to grow.
 
@@ -1351,6 +1361,34 @@ import { keyboardActivatesTheater, playbackStatusText } from "./js/theater-keys.
       cues = cues.concat(weightedStarts(caps, from, nextAt));
     }
     return cues.length ? cues : null;
+  }
+
+  function selectNarrationCues(captions, entry, options) {
+    var lines = Array.isArray(captions) ? captions : [];
+    var opts = options || {};
+    var n = lines.length;
+    var cues = normalizeCues(entry && entry.cues);
+    var segments = opts.segments;
+    var expanded = segments ? expandNarrationCues(segments, { duration: opts.duration }) : null;
+    if (cues && cues.length === n) return cues;
+    if (expanded && expanded.length === n) return expanded;
+    return null;
+  }
+
+  function renderedCaptionAtTime(captions, entry, time, options) {
+    var lines = Array.isArray(captions) ? captions : [];
+    var opts = options || {};
+    var cues = selectNarrationCues(lines, entry, opts);
+    var beats = buildCaptionBeats(lines, { cues: cues, duration: opts.duration });
+    var index = beatIndexAtTime(beats, time);
+    var lead, title;
+    if (index < 0 || index >= lines.length) return { index: index, text: "" };
+    lead = Number(entry && entry.leadCaptions) || 0;
+    title = entry && typeof entry.title === "string" ? entry.title : "";
+    return {
+      index: index,
+      text: lead > 0 && index < lead && title ? title : String(lines[index] == null ? "" : lines[index])
+    };
   }
 
   function buildCaptionBeats(captions, options) {
@@ -2703,11 +2741,10 @@ import { keyboardActivatesTheater, playbackStatusText } from "./js/theater-keys.
   }
 
   function cuesForNarration(entry, duration) {
-    var segments = narrationSegments(entry);
-    var expanded = segments ? expandNarrationCues(segments, { duration: duration }) : null;
-    if (expanded && expanded.length === episode.captions.length) return expanded;
-    if (entry && Array.isArray(entry.cues)) return entry.cues;
-    return null;
+    return selectNarrationCues(episode.captions, entry, {
+      duration: duration,
+      segments: narrationSegments(entry)
+    });
   }
 
   function audioCaptionText(index) {

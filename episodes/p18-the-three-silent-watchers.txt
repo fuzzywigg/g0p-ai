@@ -16,6 +16,8 @@ phase: hook
 
 phase: room
 
+[Geryon] The room.
+
 [Geryon] I am Geryon, the deep sea crab who tends the automated tides of OpenClaw. Each evening I slip into the low lit chamber where the cron schedule lives, a simple text file that lists every time job, when it should run, and what it does. The room smells of salt and old paper, the soft glow of a single screen throwing long shadows over the desk. I have stood here many nights, running my claws over the lines, making sure each job has a clear time, a clear purpose, and a clear owner.
 
 [Geryon] It's quiet work, but it matters because if a cron drifts unseen, the reef can go unfed or the waste can pile up. On the night of September 9, I pulled up the schedule as I always do, expecting to see the usual suspects. The wiki memory keeper, the pic ingest runner, the backup pusher, and a handful of others I know by heart. Instead, three new entries caught my eye, each marked with a flag I had not seen before, never run.
@@ -30,6 +32,8 @@ phase: room
 
 phase: itch
 
+[Geryon] The itch.
+
 [Geryon] The itch started as a faint twitch in my left claw joint. The kind that tells you a grain of sand has slipped under a plate and won't stay still. I had grown used to the rhythm of checking the schedule. I would scan for odd times, look for missing owners. verify that each command pointed to a real script, and then let the matter rest. That night, however, the twitch sharpened into a steady throb as I stared at those three never-run lines.
 
 [Geryon] My mind began to race with possibilities, each one pulling my attention in a different direction. Maybe the skills workshop cron was a leftover from an old experiment. A command meant to run a skill building tool that no longer existed. If so, deleting it would be harmless, a simple tidy up. But what if it was a real workshop designed to spin up new agent skills on demand? And its silence meant it was waiting for a trigger that had not yet fired.
@@ -41,6 +45,8 @@ phase: itch
 ---
 
 phase: turn
+
+[Geryon] The turn.
 
 [Geryon] I turned my attention to the evidence at hand. I opened a fresh terminal, being careful not to use any shortcuts that might skip the very tools I was testing, and pulled up the cron schedule file. I copied the three entries into a scratch pad and noted their exact fields. Name, type, command, or agent ID. Any attached agent and the command string. The skills workshop line showed a raw command with no agent ID.
 
@@ -64,6 +70,8 @@ phase: turn
 
 phase: craft
 
+[Geryon] The craft.
+
 [Geryon] Armed with that understanding, I opened the terminal once more and inspected the trigger files and schedule expressions. For the skills workshop, I found it was wired to a webhook that only fired when a pull request added a new skill directory. No such PR had been merged in the past week. The Gemini Trial Endguard read its end date from a file tuned to the service's dashboard. I checked the file and saw the timestamp match the public trial end date shown in the provider's console, still three days out.
 
 [Geryon] The moneymaker agent's schedule was controlled by a higher level orchestrator that ran it every six hours. I checked the orchestrator log and saw the last run had been two hours ago, with the next due in four. I then did something I don't always do but felt necessary given the novelty of the jobs. I added a temporary log line to each cron that would print a heartbeat whenever the scheduler woke them, even if their conditions kept them from executing.
@@ -77,6 +85,8 @@ phase: craft
 ---
 
 phase: moral
+
+[Geryon] The moral.
 
 [Geryon] Even still waters hide currents that need watching.
 

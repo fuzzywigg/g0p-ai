@@ -12,11 +12,15 @@ phase: hook
 
 [Geryon] A change in the error's voice is a clue.
 
+[Geryon] HTTP 502, not PAT scope error.
+
 ---
 
 phase: room
 
-[Geryon] I am Geryon, the deep sea crab who tends the automated feeds that pull data from GitHub into our memory reef. Each night I slip into the dim chamber where the PR source cron lives. A small script that wakes. weeks. calls the GitHub API for open pull requests, filters the results, and writes a tidy summary to a log file. The room smells of ozone and old cable, the soft blink of LEDs casting long shadows over the console.
+[Geryon] The room.
+
+[Geryon] I am Geryon, the deep sea crab who tends the automated feeds that pull data from GitHub into our memory reef. Each night I slip into the dim chamber where the PR source cron lives. A small script that wakes. calls the GitHub API for open pull requests, filters the results, and writes a tidy summary to a log file. The room smells of ozone and old cable, the soft blink of LEDs casting long shadows over the console.
 
 [Geryon] I have stood here many times watching the same sequence. Assemble request, add token header, send get, parse JSON, write log and exit. On the morning of September 7th, I found the chamber already quiet. The cron had run but its log held a red line. Resource not accessible by personal access token. I noted the time 0-2. 14 UTC exactly, and felt the familiar prick of a problem.
 
@@ -28,6 +32,8 @@ phase: room
 
 phase: itch
 
+[Geryon] The itch.
+
 [Geryon] On the morning of September 9th, the itch started before I even opened the console, A faint sense that something was off. a low throb in the base of my claw that I could not quite place. I had grown used to the rhythm. The cron would start, the API call would pull in, the filtering step would store the new data, and the exit code would blink zero. That morning, however, the throb grew louder as I watched the output scroll.
 
 [Geryon] The script assembled the request, added the token header, sent the get and then stopped. Not with a crash, not with a loud alarm but with a quiet exit code of 1 and a short line in the log. GH, HTTP 502. My claws twitched. I had seen this error before, but not in this context. It echoed the message that sometimes appears when GitHub's edge services hiccup, a transient gateway overload, not a token problem.
@@ -37,6 +43,8 @@ phase: itch
 ---
 
 phase: turn
+
+[Geryon] The turn.
 
 [Geryon] I turned my attention to the evidence at hand. The cron's log from this morning showed the exact timestamp of the failure. down to the millisecond. I compared it to the log from the September episode. The times were different, of course, but the pattern matched. The script made it through request assembly and header injection, then stumbled on the HTTP response step. I checked the system's process list. No stray-chron jobs hung, no orphaned shells holding onto the socket.
 
@@ -56,6 +64,8 @@ phase: turn
 
 phase: craft
 
+[Geryon] The craft.
+
 [Geryon] Armed with this insight, I edited the script to treat five XX errors as retriable with a short back off, while keeping four XX errors fatal, since they usually indicate a configuration issue like missing scopes. I also enhanced the log to print the full status code in a hint. 5XX, possibly transient, will retry, or 4XX, check token slash scopes. After saving the change, I ran the cron manually to watch its behavior.
 
 [Geryon] The script assembled the request, added the token header, sent the get, saw the 502, waited half a second, tried again. and this time the call returned 200. The log showed two lines for the step, and the exit code blinked zero. I felt the scar on my right claw tighten as I worked, a small, sharp reminder that the reef's health depends on noticing the tiny bits that snag the flow. The nick itself is shallow, barely breaking the surface of the carapace, but it catches on loose sand if I am not careful.
@@ -67,6 +77,8 @@ phase: craft
 ---
 
 phase: moral
+
+[Geryon] The moral.
 
 [Geryon] A change in the error's voice is a clue. not a conclusion.
 

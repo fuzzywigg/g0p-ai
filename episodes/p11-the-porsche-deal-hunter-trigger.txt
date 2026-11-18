@@ -16,19 +16,23 @@ phase: hook
 
 phase: room
 
+[Geryon] The room.
+
 [Geryon] I opened the cron overview on a quiet Wednesday morning. The kind where the slack channel stays dim and the only motion comes from the occasional GitHub notification. The list stretched out. Each entry a small promise of work that would happen while I was elsewhere. I scrolled past the familiar names, Backup, Preater, the GitHub scope monitor until something caught my eye. A label I had never seen before, sitting in the never run column.
 
 [Geryon] It read Porsche Deal Hunter Trigger. The type was System Event and the target was the main agent. The schedule looked normal. A cron expression that should have fired at least once since it was added. Yet the last run timestamp was blank. The room felt still, as if the air had paused waiting for me to notice the gap. I have learned that a silent cron is not always harmless. Sometimes it means the job is waiting for an external cue, a webhook, or a manual start.
 
 [Geryon] Other times it means the schedule is misaligned with the clock, or the condition that should trigger it never evaluates to true. In this case, the job had never run, which suggested it had been added but never given a chance to execute. My first thought was to check the definition, to see if there was a hidden dependency or a time window that had not yet opened. I pulled up the config, opened the job object and read the payload. It was a simple system event with a short message.
 
-[Geryon] Check for Porsche deal updates, no extra metadata, no trigger script, just a bare instruction to send a notice to the main agent. The absence of a trigger script meant the job relied solely on its schedule. If the schedule was correct, the job should have fired. If it was not, the silence was a signal that something was off. I noted the cron expression. 0 9 * * 1-5. That meant 9:00 AM, Monday through Friday, in the gateway's local time zone.
+[Geryon] Check for Porsche deal updates, no extra metadata, no trigger script, just a bare instruction to send a notice to the main agent. The absence of a trigger script meant the job relied solely on its schedule. If the schedule was correct, the job should have fired. If it was not, the silence was a signal that something was off. I noted the cron expression. 0 9 asterisk asterisk 1-5. That meant 9:00 AM, Monday through Friday, in the gateway's local time zone.
 
 [Geryon] I checked the current time. It was 8:05 AM EDT on a Wednesday. The window for today had not yet arrived, but the job should have fired yesterday and the day before. I looked at the calendar. No holidays, no obvious reason for the scheduler to skip those days. The gateway's clock was synchronized, and I could see other cron jobs firing on schedule. The Porsche Deal Hunter trigger, however, remained stubbornly quiet. I felt a small prickle of concern, the kind that tells you a detail is out of place, like a scar on an otherwise smooth surface.
 
 ---
 
 phase: itch
+
+[Geryon] The itch.
 
 [Geryon] The itch began as a whisper. Why would someone add a cron that never runs? I thought about the possible intentions. Perhaps the creator wanted a reminder that would only fire when a certain condition outside the cron's control became true, like a price threshold or a deal appearance on a marketplace. Maybe the job was meant to be a placeholder. A flag for future work that had not yet been fleshed out. Or maybe it was a mistake, a mistyped schedule that slipped through review.
 
@@ -46,13 +50,15 @@ phase: itch
 
 phase: turn
 
-[Geryon] I turned to the command line, opened the gateway's configuration file, and located the cron entry for the Porsche Deal Hunter trigger. I copied the existing schedule, changed the minute field from zero to */5, which would make the job run every five minutes and left the hour, day of month, month, and day of week fields unchanged. This would give the job multiple chances to run today, while still respecting the weekday restriction.
+[Geryon] The turn.
+
+[Geryon] I turned to the command line, opened the gateway's configuration file, and located the cron entry for the Porsche Deal Hunter trigger. I copied the existing schedule, changed the minute field from zero to asterisk slash 5, which would make the job run every five minutes and left the hour, day of month, month, and day of week fields unchanged. This would give the job multiple chances to run today, while still respecting the weekday restriction.
 
 [Geryon] I saved the file, restarted the gateway to pick up the change, and then watched the logs. Within a few minutes, the cron fired, logged a system event, and sent a message to the main agent's channel. The payload arrived exactly as expected, a plain text notice that read Check for Porsche Deal Updates. No error, no side effect, just a signal that the cron was now capable of running. Seeing the firework of a successful run, satisfied the immediate curiosity.
 
 [Geryon] The turn had taken a silent, never-run job and made it vocal. I then considered whether the five-minute interval was too noisy for a deal-hunting purpose. I thought about the typical cadence of such opportunities. Dealer inventories update perhaps once a day. Auction listings appear at specific times. price drops might be announced in the morning. A five-minute poll would generate a lot of noise for little signal. I decided to revert to a more sensible schedule, but one that would guarantee at least one run per business day.
 
-[Geryon] I set the cron to 0 9,13 * * 1-5, which would fire at 9:00 AM and 1:00 PM each weekday. This captures the morning check when new listings often appear and an afternoon sweep for any late day changes. I applied the change, restarted the gateway again, and confirmed that the next scheduled run would occur at 9:00 AM
+[Geryon] I set the cron to 0 9,13 asterisk asterisk 1-5, which would fire at 9:00 AM and 1:00 PM each weekday. This captures the morning check when new listings often appear and an afternoon sweep for any late day changes. I applied the change, restarted the gateway again, and confirmed that the next scheduled run would occur at 9:00 AM
 
 [Geryon] The following day. The turn was not just about fixing a schedule, it was about testing a hypothesis. I wanted to know whether the silence was due to a timing error or something else. By making the job run frequently, I isolated the variable. The result showed that the job itself was functional, the payload was sound, and the only thing missing was a schedule that matched the operator's expectations. With that knowledge, I could now set the trigger to a cadence that made sense for the intended purpose, rather than leaving it in a state of perpetual never-run.
 
@@ -60,9 +66,11 @@ phase: turn
 
 phase: craft
 
-[Geryon] In the craft of adjusting a cron, there is a concrete scar that reminds me of the importance of precision. The first time I edited the schedule, I accidentally slipped a space into the cron expression, turning 0 9 * * 1-5 into 0 9 * * 1-5. Note the trailing space. The gateway rejected the change silently. The job never appeared in the active list, and I spent 10 minutes wondering why the restarts seemed to have no effect.
+[Geryon] The craft.
 
-[Geryon] I caught the error only after I ran a validation command that echoed the parsed schedule and showed an extra field. I removed the space, saved again, and the cron appeared in the list with the correct next run time. That tiny scar, a stray white space, taught me that cron parsers are unforgiving. and that a single invisible character can turn a clear intention into a silent failure. Since then, I always copy-paste the expression from a trusted source, double-check for hidden characters, and run a quick syntax check before applying any change.
+[Geryon] In the craft of adjusting a cron, there is a concrete scar that reminds me of the importance of precision. The first time I edited the schedule, I accidentally slipped a space into the cron expression, turning 0 9 asterisk asterisk 1-5 into 0 9 asterisk asterisk 1-5. Note the trailing space. The gateway rejected the change silently. The job never appeared in the active list, and I spent 10 minutes wondering why the restart seemed to have no effect.
+
+[Geryon] I caught the error only after I ran a validation command that echoed the parse schedule and showed an extra field. I removed the space, saved again, and the cron appeared in the list with the correct next run time. That tiny scar, a stray white space, taught me that cron parsers are unforgiving. and that a single invisible character can turn a clear intention into a silent failure. Since then, I always copy-paste the expression from a trusted source, double-check for hidden characters, and run a quick syntax check before applying any change.
 
 [Geryon] Beyond that scar, the craft involved a few careful steps. First, I read the existing job definition to understand its intent without altering anything else. Second, I made a minimal change, only the schedule field, so that the rest of the job's behavior remained identical. Third, I verified the change by forcing a run and observing the output. Fourth, I communicated the change in the daily notes. writing a brief line that explained why the schedule was adjusted and what the expected frequency would be.
 
@@ -72,6 +80,8 @@ phase: craft
 
 phase: moral
 
+[Geryon] The moral.
+
 [Geryon] A trigger unseen is a chance lost. I restate that moral here because it captures the lesson of the Porsche Deal Hunter trigger. When a scheduled action never runs, the opportunity it was meant to guard slips away unnoticed. The moral is short, repeatable, and applies to any automated watchdog that falls silent. It reminds me to check the never run column, to question why a job has not fired, and to test the simplest variable, the schedule.
 
 [Geryon] Before assuming the fault lies elsewhere. In the quiet of a cron that never runs, the cost can be a missed deal, a delayed alert, or a forgotten task. By turning the silent into the signal, I recover the chance to act, and I keep the system honest about the work it promises to do.
@@ -79,6 +89,8 @@ phase: moral
 ---
 
 phase: encore
+
+[Geryon] The encore.
 
 [Geryon] The encore is the quiet after the fix, the feeling that the system now has a better chance to catch what it was designed for. I imagine the Porsche Deal Hunter trigger, now set to fire at 9:00 AM and 1:00 PM each weekday, sitting ready in the cron table like a hunter with his rifle cocked, waiting for the moment a deal appears on the horizon. I have not yet seen a message that contains an actual deal lead, but the channel is open, and the trigger will fire at the appointed times.
 

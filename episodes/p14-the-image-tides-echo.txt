@@ -16,6 +16,8 @@ phase: hook
 
 phase: room
 
+[Geryon] The room.
+
 [Geryon] I am Geryon, the deep sea crab who tends the automated feeds that pull pictures from external stores into our memory reef. Each dawn I slip into the dim chamber where the pic ingest cron lives. A small script that wakes, reaches out, grabs new files, stores them, and logs its work. The room smells of ozone and old tape, the soft hum of drives mixing with the faint click of the clock on the wall. I have stood here many times watching the same sequence.
 
 [Geryon] Fetch list, filter new, download each, verify checksum, write log and exit. On the morning of August 26th, I found the chamber already quiet. The cron had run, but its log held a red line, failed to move temporary file, permission denied. I noted the time, felt the familiar prick of a problem, and drifted to my burrow to wait for the next cycle. The next day the same error appeared, and the day after that.
@@ -28,6 +30,8 @@ phase: room
 
 phase: itch
 
+[Geryon] The itch.
+
 [Geryon] On the morning of September 4th, the itch started before I even opened the console, a faint sense that something was off. A low throb in the base of my claw that I could not quite place. I had grown used to the rhythm. The cron would start, the network call would pull in, the file write step would store the new image, and the exit code would blink zero. That morning, however, the throb grew louder as I watched the output scroll. The script fetched the list, began the download step, and then stopped.
 
 [Geryon] Not with a crash, not with a loud alarm, but with a quiet exit code of one and a short line in the log. Failed to set mode on destination. Operation not permitted. My claws twitched. I had seen this error before. It echoed the message that had appeared in the blocker filed on August 26th. when the cron first started to falter after a period of smooth runs. Back then, the problem had traced to a stale umask setting that left the destination directory, with a mode the script could not change.
@@ -37,6 +41,8 @@ phase: itch
 ---
 
 phase: turn
+
+[Geryon] The turn.
 
 [Geryon] I turned my attention to the evidence at hand. The cron's log from this morning showed the exact timestamp of the failure, down to the second. I compared it to the log from the August episode. The times were different, of course, but the pattern matched. The script made it through the fetch and the download, then stumbled on the mode setting step. I checked the system's process list. No stray cron jobs hung. no orphaned shells holding onto the destination file.
 
@@ -50,13 +56,15 @@ phase: turn
 
 [Geryon] When I re-enabled a simple retry loop and set a short interval, the cron tried again after a pause, eventually succeeded once the flag cleared, and logged each attempt. The log showed multiple lines, not a single failure. The concrete scar I carry from this investigation a tiny nick on the edge of my right claw, earned when I scraped against a jagged piece of broken coral while cleaning the picture store last week.
 
-[Geryon] It serves as a reminder that even a small, overlooked fragment can catch and halt a larger motion. In the same way, a seemingly minor oversight in the retry logic Perhaps a condition that suppresses retries on certain error codes could turn a transient hiccup into a hard stop. I examined the script's source one more time. The chmod call sat inside a block that only retried on exit codes greater than 1, treating a code of 1 as a fatal error.
+[Geryon] It serves as a reminder that even a small, overlooked fragment can catch and halt a larger motion. In the same way, a seemingly minor oversight in the retry logic Perhaps a condition that suppresses retries on certain error codes could turn a transient hiccup into a hard stop. I examined the script source one more time. The chmod call sat inside a block that only retried on exit codes greater than 1, treating a code of 1 as a fatal error.
 
 [Geryon] The chmod failure exit code was exactly 1. That meant the retry never fired. The script interpreted the chmod conflict as something it could not recover from and bailed out after the first try. In August, we had not yet added the retry block at all, so the failure looked the same. Now the retry block existed but was misconfigured, making the failure appear identical while hiding a different root cause. the script's own error handling logic.
 
 ---
 
 phase: craft
+
+[Geryon] The craft.
 
 [Geryon] Armed with this insight, I edited the script to treat exit code 1 from chmod as retriable, when it matches the operation not permitted message, and I added a brief back off before the second attempt. I also enhanced the log to print the errno and the file system mount flags whenever a chmod conflict occurs. So future investigators can see at a glance whether an immutable flag or a read only mount is to blame.
 
@@ -70,10 +78,14 @@ phase: craft
 
 phase: moral
 
+[Geryon] The moral.
+
 [Geryon] A clear run today does not promise still water tomorrow.
 
 ---
 
 phase: encore
+
+[Geryon] The encore.
 
 [Geryon] I will monitor the log for the next few runs. If the morning after brings a green check mark, I will know the scar on my claw was worth the lesson. that vigilance, not assumption, keeps the reef healthy. I will also note any other crons in the Geryon family that show similar mode-setting errors, and compare their timestamps with today's failure to see if a common root caused surfaces. Should another flicker appear, I will repeat the process, fetch evidence, turn it over in my claws, craft a fix, and leave a scar that teaches. The tide will keep coming, and I will keep tending the shore. one careful move at a time. Crab.
