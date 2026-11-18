@@ -342,6 +342,7 @@ import { FABLE_BANK } from "./js/fables/bank.mjs";
 import { heroStageSize } from "./js/phone-stage.mjs";
 import { shareAction, sharePayload } from "./js/share.mjs";
 import { reducedMotionTransition } from "./js/reduced-motion.mjs";
+import { hiddenPlaybackPlan, shownPlaybackPlan } from "./js/visibility.mjs";
 (function () {
   "use strict";
 
@@ -1841,6 +1842,15 @@ import { reducedMotionTransition } from "./js/reduced-motion.mjs";
   var currentFrame = -1;
   var currentTemplate = "";
   var captionTimer = 0;
+  var captionTimerPaused = false;
+  var captionRemaining = 0;
+  var waitStarted = 0;
+  var waitDelay = 0;
+  var pageHidden = false;
+  var hiddenAt = 0;
+  var audioPausedByHide = false;
+  var speechPausedByHide = false;
+  var frameHandle = 0;
   var waitResolve = null;
   var playbackGeneration = 0;
   var selectingEpisode = false;
@@ -1899,6 +1909,8 @@ import { reducedMotionTransition } from "./js/reduced-motion.mjs";
   }
 
   function interruptWait() {
+    captionTimerPaused = false;
+    captionRemaining = 0;
     if (captionTimer) {
       clearTimeout(captionTimer);
       captionTimer = 0;
@@ -2404,6 +2416,7 @@ import { reducedMotionTransition } from "./js/reduced-motion.mjs";
 
   var last = 0;
   function frame(now) {
+    if (pageHidden || document.hidden) return;
     if (!last) last = now;
     var dt = Math.min(48, now - last);
     last = now;
@@ -2411,17 +2424,134 @@ import { reducedMotionTransition } from "./js/reduced-motion.mjs";
     if (!playing && !reduceMotion) drift(dt);
     if (playing) applyMorph(now);
     draw();
-    requestAnimationFrame(frame);
+    if (pageHidden || document.hidden) return;
+    frameHandle = requestAnimationFrame(frame);
   }
 
   function wait(ms) {
     return new Promise(function (resolve) {
       waitResolve = resolve;
+      waitDelay = ms;
+      waitStarted = performance.now();
+      captionTimerPaused = false;
       captionTimer = setTimeout(function () {
         if (waitResolve === resolve) waitResolve = null;
+        captionTimer = 0;
         resolve();
       }, ms);
     });
+  }
+
+  function pauseCaptionTimer(now) {
+    if (!captionTimer || !waitResolve) return false;
+    captionRemaining = Math.max(0, waitDelay - (now - waitStarted));
+    clearTimeout(captionTimer);
+    captionTimer = 0;
+    captionTimerPaused = true;
+    return true;
+  }
+
+  function resumeCaptionTimer() {
+    if (!captionTimerPaused || !waitResolve) return;
+    var resolve = waitResolve;
+    var remaining = captionRemaining;
+    captionTimerPaused = false;
+    waitStarted = performance.now();
+    waitDelay = remaining;
+    captionTimer = setTimeout(function () {
+      if (waitResolve === resolve) waitResolve = null;
+      captionTimer = 0;
+      resolve();
+    }, remaining);
+  }
+
+  function pauseSpeechForHide() {
+    var synth = window.speechSynthesis;
+    if (!synth || typeof synth.pause !== "function") return false;
+    if (synth.speaking === false && synth.pending === false) return false;
+    try {
+      synth.pause();
+      return true;
+    } catch (err) {
+      return false;
+    }
+  }
+
+  function resumeSpeechFromHide() {
+    if (!speechPausedByHide) return;
+    speechPausedByHide = false;
+    var synth = window.speechSynthesis;
+    if (!synth || typeof synth.resume !== "function") return;
+    try { synth.resume(); } catch (err) {}
+  }
+
+  function pauseAudioForHide() {
+    if (!activeAudio || activeAudio.paused || activeAudio.ended) return false;
+    try {
+      activeAudio.pause();
+    } catch (err) {
+      return false;
+    }
+    audioPausedByHide = true;
+    return true;
+  }
+
+  function resumeAudioFromHide() {
+    if (!audioPausedByHide || !activeAudio || activeAudio.ended) {
+      audioPausedByHide = false;
+      return;
+    }
+    audioPausedByHide = false;
+    try {
+      var pending = activeAudio.play();
+      if (pending && typeof pending.catch === "function") pending.catch(function () {});
+    } catch (err) {}
+  }
+
+  function onVisibilityChange() {
+    var now = performance.now();
+    if (document.hidden) {
+      var plan = hiddenPlaybackPlan({
+        audioPlaying: Boolean(activeAudio && !activeAudio.paused && !activeAudio.ended),
+        speechActive: Boolean(window.speechSynthesis && (window.speechSynthesis.speaking || window.speechSynthesis.pending)),
+        captionTimer: Boolean(captionTimer),
+        morphing: morphing,
+        morphStart: morphStart
+      }, now);
+      pageHidden = true;
+      hiddenAt = plan.hiddenAt;
+      if (frameHandle) cancelAnimationFrame(frameHandle);
+      frameHandle = 0;
+      morphPeakArmed = false;
+      if (plan.clearFlash) {
+        dreamFlash = null;
+        dreamPoints = [];
+        flourishUntil = 0;
+        document.documentElement.dataset.dream = "0";
+      }
+      if (plan.pauseCaptionTimer) pauseCaptionTimer(now);
+      speechPausedByHide = plan.pauseSpeech ? pauseSpeechForHide() : false;
+      if (plan.pauseAudio) pauseAudioForHide();
+      document.documentElement.dataset.hidden = "1";
+      return;
+    }
+    var shown = shownPlaybackPlan({
+      hiddenAt: hiddenAt,
+      morphing: morphing,
+      morphStart: morphStart,
+      audioPausedByHide: audioPausedByHide,
+      speechPausedByHide: speechPausedByHide,
+      captionTimerPaused: captionTimerPaused,
+      captionRemaining: captionRemaining
+    }, now);
+    pageHidden = false;
+    if (shown.morphing) morphStart = shown.morphStart;
+    last = 0;
+    if (shown.resumeCaptionTimer) resumeCaptionTimer();
+    if (shown.resumeSpeech) resumeSpeechFromHide();
+    if (shown.resumeAudio) resumeAudioFromHide();
+    delete document.documentElement.dataset.hidden;
+    if (!frameHandle) frameHandle = requestAnimationFrame(frame);
   }
 
   var audioManifest = {};
@@ -2735,6 +2865,7 @@ import { reducedMotionTransition } from "./js/reduced-motion.mjs";
   }
 
   window.addEventListener("pagehide", stopPlayback);
+  document.addEventListener("visibilitychange", onVisibilityChange);
   canvas.setAttribute("tabindex", "0");
   stageUi.addEventListener("click", function (e) { e.stopPropagation(); });
   stageUi.addEventListener("keydown", function (e) { e.stopPropagation(); });
@@ -2871,7 +3002,7 @@ import { reducedMotionTransition } from "./js/reduced-motion.mjs";
     motionQuery.addListener(onReduceMotionChange);
   }
 
-  requestAnimationFrame(frame);
+  frameHandle = requestAnimationFrame(frame);
 })();
   </script>
 </body>
