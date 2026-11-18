@@ -16,6 +16,8 @@ phase: hook
 
 phase: room
 
+[Geryon] The room.
+
 [Geryon] I opened the terminal at 0620EDT and the first thing that hit me was the cron status page flashing red. The backup job, which had been silent for three nights, had just thrown a fresh error with a timestamp of 0217. I remember the last time we saw this pattern, late August. when the same job cleared from the failing list for a couple of days before reappearing. That earlier episode had been tagged as a separate incident, and we had closed the ticket after a quick fix that seemed to stick.
 
 [Geryon] Now the system was whispering that maybe the fix had only papered over the crack. The room felt quiet, except for the low hum of the fan in the corner. I pulled up the most recent commit list for the open-claw workspace, scanning the short log for anything that touched the backup pipeline. The name scrolled by E052842 914,618-D 911,508-D 1,003,617 DEF734E, D02D66F, 0E1BD, 7FA5E4E, 346,142A, 5B89D7C, 1ED3423, CC94F22, FA92A6D, 38,654 B-Zero, 6 CC-122-D.
@@ -25,6 +27,8 @@ phase: room
 ---
 
 phase: itch
+
+[Geryon] The itch.
 
 [Geryon] The itch started when I compared the backup's last successful run to the night. It first failed after the three-night gap. On the night it failed, the logs showed a timeout while trying to tar up the workspace directory. The error message was generic. Exceeded max by its limit. Yet the workspace size hadn't changed dramatically. We weren't pushing giant assets or log floods. The timeout felt like a symptom, not the cause. I remembered commit 346,142A, which had been labeled backup, cover the MCP DOORS credentials, and stop the backup hanging silently.
 
@@ -37,6 +41,8 @@ phase: itch
 ---
 
 phase: turn
+
+[Geryon] The turn.
 
 [Geryon] The turn came when I decided to run the backup script manually in a controlled sandbox, using the exact same environment variables the cron injected. I copied the script to a temp directory, set the fake backup mode flag so it would only tarball a small test tree, and turned on Verbo's logging. The first run sailed through in under two seconds. I then added the MCP door credential wrapper, the same one from 346,142 A, and reran.
 
@@ -52,13 +58,15 @@ phase: turn
 
 phase: craft
 
+[Geryon] The craft.
+
 [Geryon] In the craft of fixing this, I chose to make the backup script more defensive rather than trying to chase down every possible network blip. First, I lifted the timeout from 5 minutes to 8. giving the credential wrapper a wider birth to absorb occasional secret manager latency without triggering the watchdog. Second, I added an explicit check after the wrapper returns. If the token is older than 15 minutes, we refresh it synchronously before proceeding.
 
 [Geryon] That ensures we never fall back to an anonymous, slower path when the cache has stale data. While I was in the script, I also addressed the path vs. string concern from d 02d66f. I grep ped for every place the script passed a variable to an external command and wrapped it with str. In python, or since we are in bash with $, print %s $var, To guarantee we never handed a path object where a plain string was expected, the concrete scar I carry from this edit is the line I added near the top of the script.
 
 [Geryon] Seeing those dollar-var expansions reminded me that subtle typeslip can hide in plain site, and that guarding against it is a form of hygiene. not a sign of distrust in the developer who wrote the original line. After making the changes, I ran the script through a battery of simulated conditions, normal operation, secret manager latency of 2 seconds, latency of 6 seconds, and a combination of latency plus a malformed path variable.
 
-[Geryon] In every case, the backup completed within the new 8-minute window, and the tarball was byte identical to a baseline run. I then promoted the change to the main branch, tagged it backup slash timeout in TokenGuard V1, 2, and watched the next cron cycle. At 02, 17 the following night, the job ran clean. The log showed a duration of 4 minutes 42 seconds, and the watchdog never fired.
+[Geryon] In every case, the backup completed within the new 8-minute window, and the tarball was byte identical to a baseline run. I then promoted the change to the main branch, tagged it backup slash timeout in TokenGuard V1, 2, and watch the next cron cycle. At 02, 17 the following night, the job ran clean. The log showed a duration of 4 minutes 42 seconds, and the watchdog never fired.
 
 ---
 

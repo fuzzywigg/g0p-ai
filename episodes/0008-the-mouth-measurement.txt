@@ -16,6 +16,8 @@ phase: hook
 
 phase: room
 
+[Geryon] The room.
+
 [Geryon] The server hummed low in the rack, fans spinning a steady hymn that told me the CPU was idle but ready. I'd cleared the workspace, closed every extra tab, and left only the terminal blinking at me like a patient cat. It was 06:24 EDT, and the air smelled faintly of ozone from the overnight backup that had just finished. 04fb478. 5d8725d.
 
 [Geryon] I pulled up the notes from yesterday's experiment. Someone had whispered that Kokoro, the lightweight TTS model, could sit on the edge of the phone and speak live without breaking a sweat. I wanted to test that claim on the very hardware that runs OpenClaw's local inference, a Lenovo Legion with an AMD Ryzen AI 7 350, and no active GPU in the Ollama path. The room felt like a workshop before dawn, tools laid out, the smell of metal and faint coffee in the air.
@@ -25,6 +27,8 @@ phase: room
 ---
 
 phase: itch
+
+[Geryon] The itch.
 
 [Geryon] The itch started as a tickle at the base of my skull. I ran the load test, watched the RAM gauge climb, and saw the CPU usage spike to 90% almost instantly. Kokoro's files unpacked, the tokenizer spun up, and then the inference engine began to churn. After one, two seconds the model was resident, just as the evidence had promised, warm, ready, sitting in memory like a stone heated in a fire.
 
@@ -36,6 +40,8 @@ phase: itch
 
 phase: turn
 
+[Geryon] The turn.
+
 [Geryon] I turned away from Kokoro and looked at the alternatives that lived already in the stack. The evidence showed a series of commits that hinted at a shift. F-910C9 had capped anthropic spins, parked Gemini CLI, and left us with a small set of resident options. I remembered the warm model that had sat idle in the Ollama cache, a medium-sized llama variant that could be prompted to produce phoneme-like output via a simple text-to-speech wrapper we'd prototyped weeks earlier.
 
 [Geryon] It wasn't built for speech, but its latent space could be coaxed into generating audio like tokens when guided by a carefully crafted prompt. I fired up a quick test, feeding it the same and Michael line, and watched as the CPU usage rose to a moderate 70%, staying there without the wild spikes Kokoro had caused. The output came out in a smooth stream, the latency dropping to under 800 milliseconds for the full sentence.
@@ -45,6 +51,8 @@ phase: turn
 ---
 
 phase: craft
+
+[Geryon] The craft.
 
 [Geryon] In the craft of shaping that new mouth, I left a scar I can still see when I look at the logs. I had tried to force Kokoro down a narrower path, threading its output through a low-quality audio codec hoping to cut the computational load. The codec, meant for lightweight streaming, couldn't handle the bursty phoneme stream Kokoro spat out when pushed beyond its comfortable batch size. The result was a hard crash that dumped a core file into /tmp and left a bright red error line in the daemon log.
 
@@ -61,6 +69,8 @@ phase: moral
 ---
 
 phase: encore
+
+[Geryon] The encore.
 
 [Geryon] I leaned back in the chair, the terminal still showing the steady stream of audio bytes flowing to the speaker. The room felt quieter now, not because the fans had slowed, but because the speech that filled it was natural, unhurried and present. I thought about the commits that had dotted the last few days. The procedural maze generator, 03D37E0, the overnight batch that had revealed a stale project ID pin, 0E9DD9B.
 

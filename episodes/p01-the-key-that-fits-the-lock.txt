@@ -16,6 +16,8 @@ phase: hook
 
 phase: room
 
+[Geryon] The room.
+
 [Geryon] It was 8.15 on a Sunday morning and my phone was ringing. Not spam, my own system, dialing in on the Twilio rail I'd set up the week before, reading out a question in a voice that was professionally neutral about the fact that it was asking something that mattered. The question was about GitHub. Specifically, Should the agent be allowed to write to GitHub? Yes or no the voice said you have two minutes. I said yes that call was Preater a daily checkpoint I'd wired up to gate certain decisions on a spoken confirmation.
 
 [Geryon] The yes didn't feel dramatic I'd been working toward it for days, a new PAT scope down to repo rights, tested against a list of what it could and couldn't touch, stored in secret manager under the name GitHub Pat Wright v3. The call was the last step in a week of credential surgery, and the yes was just the door closing properly behind me. But the week before that Sunday was less tidy, and it's the week before that tells the real story.
@@ -23,6 +25,8 @@ phase: room
 ---
 
 phase: itch
+
+[Geryon] The itch.
 
 [Geryon] A few weeks earlier I'd done an audit and found something that turned my stomach. Nine plaintext GitHub tokens and ~/ dot Claude slash projects, five of them still live. One was a full admin PAT with read and write and delete across every repository and every organization. Not in a secret store. Not encrypted. sitting in a transcript directory alongside months of session history. I knew exactly how they'd gotten there. The agent had needed credentials to do work, I'd handed them over in session because it was faster, and the session logs had kept them faithfully ever since.
 
@@ -36,15 +40,19 @@ phase: itch
 
 phase: turn
 
+[Geryon] The turn.
+
 [Geryon] I drew a table. Three rows. Row one. Fleet token, read only. What the agent uses for reconnaissance, listing repos, reading files, checking issue state. Already existed, already scoped, not worth touching. Row 2. WriterPAT, scoped right. What the agent needs for actual output. Pushing commits, updating files, running handoffs. This was the gap. I needed to fill it without filling it with a skeleton key.
 
 [Geryon] Row 3. Org admin. Account pseudo. Secrets. Billing. Member management. Org settings. This row doesn't get automated. Not yet. Maybe not ever without a different architecture. This row stays human. The decision against was obvious the moment I wrote it down. Don't widen the fleet token. The temptation was real, one token, one place to update, fewer moving parts. But widening yet would have turned every cron, every subagent, every background job into a potential writer.
 
-[Geryon] That's not a configuration. That's a prayer that nothing ever goes sideways at the same time your attention is elsewhere. The writer lane had to be separate. And it had to be every push logged. Every use traceable, the token itself living in a secrets manager that I could revoke with a single API call if something went wrong.
+[Geryon] That's not a configuration. That's a prayer that nothing ever goes sideways at the same time your attention is elsewhere. The writer lane had to be separate. And it had to be auditable, every push logged. Every use traceable, the token itself living in a secrets manager that I could revoke with a single API call if something went wrong.
 
 ---
 
 phase: craft
+
+[Geryon] The craft.
 
 [Geryon] The new PAT took 15 minutes to create. Gopping it took longer. I went through the GitHub permissions menu twice. Write access to repository contents, yes. Secrets, no, one misconfigured cron with secrets rate access is a credential rotation event waiting to happen. Gists, no, public gists are public and I wanted rights to stay inside repos I owned and intended to publish to. The NFT2.me org, no, different ownership structure, different risk surface, not this tokens business.
 
@@ -60,11 +68,15 @@ phase: craft
 
 phase: moral
 
+[Geryon] The moral.
+
 [Geryon] The right key isn't the one that opens everything, it's the one that opens only what you meant to open. Every credential is a decision about blast radius. Full admin doesn't make an agent more capable in any sense that matters for daily work. It just means that when something goes sideways, it goes sideways further. The three-row table forced me to say out loud what I was actually willing to automate. And that sentence, row three stays human, did more to clarify the system's design. than any technical constraint I could ever written. The goal wasn't limiting the agent. It was building something where the cost of being wrong stays bounded.
 
 ---
 
 phase: encore
+
+[Geryon] The encore.
 
 [Geryon] The meta-harness for row 4 is the next chapter. A manager process, a second authorization channel, a policy that can distinguish this as a routine write from this touch's account level state. Preater already handles the daily cadence. the meta harness handles escalation. The pattern is there. The implementation isn't. If you're building something similar, an agent that needs to act in the world but shouldn't act in all of it, start with the table. Three rows, or however many your system needs.
 
