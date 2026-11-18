@@ -341,6 +341,7 @@ import { createGlyphStage } from "./js/glyph-stage.mjs";
 import { FABLE_BANK } from "./js/fables/bank.mjs";
 import { heroStageSize } from "./js/phone-stage.mjs";
 import { shareAction, sharePayload } from "./js/share.mjs";
+import { reducedMotionTransition } from "./js/reduced-motion.mjs";
 (function () {
   "use strict";
 
@@ -1833,7 +1834,8 @@ import { shareAction, sharePayload } from "./js/share.mjs";
   var morphStart = 0;
   var morphMs = 1600;
   var startedAt = 0;
-  var reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  var motionQuery = window.matchMedia("(prefers-reduced-motion: reduce)");
+  var reduceMotion = Boolean(motionQuery && motionQuery.matches);
   var captionIndex = -1;
   var currentScene = -1;
   var currentFrame = -1;
@@ -1987,6 +1989,50 @@ import { shareAction, sharePayload } from "./js/share.mjs";
       li.appendChild(btn);
       episodeListEl.appendChild(li);
     });
+  }
+
+  function snapHeldParticles() {
+    var i, p;
+    for (i = 0; i < particles.length; i++) {
+      p = particles[i];
+      if (!p.hold) continue;
+      p.x = p.tx;
+      p.y = p.ty;
+      p.sx = p.tx;
+      p.sy = p.ty;
+    }
+  }
+
+  function applyReducedMotion(enabled) {
+    var next = reducedMotionTransition({
+      reduceMotion: reduceMotion,
+      morphing: morphing,
+      morphT: morphT,
+      morphPeakArmed: morphPeakArmed,
+      dreamFlash: dreamFlash,
+      captionIndex: captionIndex
+    }, enabled);
+    if (!next.changed) return;
+    reduceMotion = next.reduceMotion;
+    morphing = next.morphing;
+    morphT = next.morphT;
+    morphPeakArmed = next.morphPeakArmed;
+    document.documentElement.dataset.motion = reduceMotion ? "reduce" : "full";
+    if (next.settleMorph) {
+      morphStart = performance.now() - morphMs;
+      document.documentElement.dataset.morphing = "0";
+      snapHeldParticles();
+    }
+    if (next.clearFlash) {
+      dreamFlash = null;
+      dreamPoints = [];
+      flourishUntil = 0;
+      document.documentElement.dataset.dream = "0";
+    }
+  }
+
+  function onReduceMotionChange(event) {
+    applyReducedMotion(Boolean(event && event.matches));
   }
 
   var captionWrap = document.getElementById("caption-wrap");
@@ -2816,6 +2862,13 @@ import { shareAction, sharePayload } from "./js/share.mjs";
     captionsEl.textContent = episode.captions[captionIndex] || "";
     captionsEl.classList.add("in");
     if (previewStill) draw();
+  }
+
+  document.documentElement.dataset.motion = reduceMotion ? "reduce" : "full";
+  if (motionQuery && typeof motionQuery.addEventListener === "function") {
+    motionQuery.addEventListener("change", onReduceMotionChange);
+  } else if (motionQuery && typeof motionQuery.addListener === "function") {
+    motionQuery.addListener(onReduceMotionChange);
   }
 
   requestAnimationFrame(frame);
