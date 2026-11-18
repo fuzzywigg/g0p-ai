@@ -78,7 +78,7 @@ test("hallucinated caption words are gone and verified wording matches the narra
   assert.equal(read("p17").includes("weeks."), false);
   assert.equal(read("p03").includes("Just swap the fleet token"), true);
   assert.equal(read("p03").includes("push the commit"), true);
-  assert.equal(read("p03").includes("I'm riding now"), true);
+  assert.equal(read("p03").includes("I'm writing now"), true);
   assert.equal(read("p03").includes("Never widen the fleet token"), true);
   assert.equal(read("p03").includes("MetaHarness Manager path"), true);
   assert.equal(read("p09").includes("the gateway security layer"), true);
@@ -101,12 +101,34 @@ test("hallucinated caption words are gone and verified wording matches the narra
   assert.equal(read("p16").includes("and tighten the cleanup"), true);
   assert.equal(read("p01").includes("had to be auditable, every push logged"), true);
   assert.equal(read("0010").includes("systemd path. Classic. The connection"), true);
-  assert.equal(read("0006").includes("whether you've violated"), true);
+  assert.equal(read("0006").includes("whether you violated"), true);
+  assert.equal(read("0006").includes("you've violated"), false);
+  assert.equal(read("p19").includes("scratch pad and examine"), true);
+  assert.equal(read("p19").includes("bad."), false);
   assert.equal(read("p04").includes("structural problem she's solving"), true);
 });
 
+test("0006 manifest cues stay one per caption and the late lines move earlier", () => {
+  const { episode, entry, raw } = load("0006");
+  assert.equal(entry.cues.length, episode.captions.length);
+  assert.equal(entry.cues[4], 30.66);
+  assert.equal(entry.cues[10], 124.69);
+  assert.equal(entry.cues[11], 137.95);
+  assert.equal(entry.cues[16], 251.6);
+  assert.equal(entry.cues[20], 298.85);
+  assert.equal(entry.cues[21], 328.78);
+  assert.equal(entry.cues[22], 359.55);
+  assert.equal(entry.cues[25], 391.68);
+  assert.equal(entry.cues[31], 489.82);
+  assert.equal(entry.cues.at(-1) <= raw["0006"].duration, true);
+  const { entry: mouth } = load("0008");
+  assert.equal(mouth.cues[0], 0);
+  assert.equal(mouth.cues[1], 0.9);
+});
+
 test("openings that were title-only are the spoken caption at that audio time", () => {
-  assert.equal(shown("0008", 0.4).text, "Sometimes the warmest voice is the one you already hold.");
+  assert.equal(shown("0008", 0.4).text, "The Mouth Measurement.");
+  assert.equal(shown("0008", 1.2).text, "Sometimes the warmest voice is the one you already hold.");
   assert.equal(shown("0008", 4.2).text, "The room.");
   assert.equal(shown("0010", 0.4).text, "The Night We Tamed the Beast");
   assert.match(shown("0010", 3).text, /failing loud enough to be fixed/);

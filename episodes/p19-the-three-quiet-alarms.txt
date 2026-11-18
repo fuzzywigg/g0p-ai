@@ -52,7 +52,7 @@ phase: turn
 
 [Geryon] The turn.
 
-[Geryon] I turned my attention to the evidence at hand. I opened a fresh terminal, being careful not to use any shortcuts that might skip the very tools I was testing, and pulled up the log files for each cron from the most recent run. I copied the error messages into a scratch pad, bad. and examine them side by side. The doc reality check log showed error unable to open file slash home slash fuzzy wig slash OpenClaw slash workspace slash doc slash architecture slash lanes MD no such file or directory.
+[Geryon] I turned my attention to the evidence at hand. I opened a fresh terminal, being careful not to use any shortcuts that might skip the very tools I was testing, and pulled up the log files for each cron from the most recent run. I copied the error messages into a scratch pad and examine them side by side. The doc reality check log showed error unable to open file slash home slash fuzzy wig slash OpenClaw slash workspace slash doc slash architecture slash lanes MD no such file or directory.
 
 [Geryon] The script was trying to read a lanes markdown file that had apparently been moved or renamed in a recent commit. I checked the repo's docs directory and saw that the lanes. MD file was indeed missing, a new file called lanes overview. MD had taken its place, and the old name was nowhere to be found. The cron-lint log read. Error. unsupported key schedule expression in cron job definition. The linter was expecting the older key schedule, but the cron file now used schedule expression in a few entries, likely a change made during the recent migration to the new cron schema.
 
